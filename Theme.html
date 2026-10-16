@@ -1,300 +1,59 @@
-<style>
-:root{
-  --bg:#f4f2ed;--bg2:#ebe7de;--card:#ffffff;--card2:#f8f7f3;--ink:#1d2a26;--muted:#66726c;
-  --line:rgba(31,77,63,.16);--accent:#1f4d3f;--accent2:#b08d3c;--on-accent:#ffffff;
-  --grad:linear-gradient(135deg,#2f6f5b,#1f4d3f);--glass:rgba(255,255,255,.95);--tab-off:#66726c;
-  --shadow:0 4px 18px rgba(20,40,30,.07);--halo:rgba(176,141,60,.13);
-  --close-filter:invert(1) grayscale(100%) brightness(200%);
-  --gold:#b08d3c;--ok:#2e7d4f;--warn:#b7791f;--bad:#b3392f;
-  --accent-rgb:31,77,63;--gold-rgb:176,141,60;--accent-hover:#2f6f5b;--gold-hover:#c49c45;
-}
-html{-webkit-text-size-adjust:100%}
-body{font-family:'Sarabun',system-ui,sans-serif;background:var(--bg);color:var(--ink);padding-bottom:30px}
-body.aw-has-dock{padding-bottom:calc(115px + env(safe-area-inset-bottom))}
+window.addEventListener('pagehide', cancelNavTimer);
+window.addEventListener('beforeunload', cancelNavTimer);
 
-/* ===== หัวเว็บ ===== */
-.aw-top{background:var(--accent);color:var(--on-accent);border-bottom:3px solid var(--gold);position:relative}
-.aw-top-in{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:10px 16px}
-.aw-crest{width:40px;height:40px;border:1.5px solid var(--gold);border-radius:50%;display:grid;place-items:center;color:var(--gold);font-weight:700;font-size:1.1rem;flex-shrink:0}
-.aw-brand b{display:block;font-size:1.02rem;line-height:1.2}
-.aw-brand small{opacity:.8;font-size:.75rem}
-.aw-sp{flex:1}
-.aw-user{font-size:.85rem;opacity:.9}
-.aw-logout{background:transparent;border:1px solid rgba(255,255,255,.55);color:var(--on-accent);border-radius:6px;padding:6px 12px;font:600 .8rem 'Sarabun',sans-serif;cursor:pointer;white-space:nowrap}
-.aw-logout:hover{background:rgba(255,255,255,.12)}
-.aw-links{position:absolute;right:16px;top:calc(100% + 4px);z-index:1100;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);min-width:240px;max-width:calc(100% - 32px);overflow:hidden}
-.aw-links a{display:block;padding:10px 14px;color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line);font-weight:600;font-size:.9rem}
-.aw-links a:hover{background:var(--halo)}
-.aw-links a small{display:block;color:var(--muted);font-weight:400;font-size:.75rem}
+  // ===== โหมดฝังในเว็บอื่น (เช่น Netlify ฝัง GAS ไว้ใน iframe) =====
+  // ถ้าฝังอยู่ จะส่งข้อความให้หน้าแม่ (index.html บน Netlify) เปลี่ยนหน้าใน iframe แทนการออกไปที่ลิงก์ GAS
+  window.AW_SHELL = false;
+  try {
+    var ao = window.location.ancestorOrigins;
+    if (ao && ao.length) {
+      var topHost = new URL(ao[ao.length - 1]).hostname;
+      window.AW_SHELL = !/(^|\.)(google\.com|googleusercontent\.com)$/.test(topHost);
+    }
+  } catch(e){}
+  try {
+    google.script.url.getLocation(function(l){ if (l && l.parameter && l.parameter.shell === '1') window.AW_SHELL = true; });
+  } catch(e){}
+  window.awNav = function(url){
+    if (window.AW_SHELL){
+      try { window.top.postMessage({ awGo: url }, '*'); return; } catch(e){}
+    }
+    try { window.top.location.href = url; } catch(e){ window.location.href = url; }
+  };
 
-/* ===== แถบเมนูลอยด้านล่าง ===== */
-.aw-dock{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:1050;display:flex;gap:2px;background:rgba(var(--accent-rgb),.96);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(var(--gold-rgb),.6);border-radius:22px;padding:6px;box-shadow:0 10px 30px rgba(0,0,0,.28);max-width:calc(100% - 16px);overflow-x:auto;scrollbar-width:none}
-.aw-dock::-webkit-scrollbar{display:none}
-.aw-dock a{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:62px;padding:7px 8px;border-radius:16px;color:rgba(255,255,255,.78);text-decoration:none;font-size:.7rem;font-weight:600;white-space:nowrap;transition:.15s}
-.aw-dock a .i{font-size:1.2rem;line-height:1}
-.aw-dock a:hover{background:rgba(255,255,255,.1);color:#fff}
-.aw-dock a.active{background:var(--gold);color:#1d1708}
-@media(max-width:576px){.aw-dock{border-radius:18px}.aw-dock a{min-width:50px;padding:6px 4px;font-size:.6rem}.aw-dock a .i{font-size:1.05rem}}
-.modal-open .aw-dock{display:none}
-
-/* ===== โครงหน้า ===== */
-.page{width:calc(100% - 24px);margin:18px auto}
-.card-lux{background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:24px}
-@media(max-width:576px){.card-lux{padding:16px}}
-.header-title{font-weight:700;font-size:1.4rem;color:var(--accent);margin:0 0 6px}
-.header-sub{color:var(--muted);font-size:.88rem;margin:0 0 18px}
-.section-title{background:var(--card2);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:6px;padding:9px 14px;margin:20px 0 12px;font-weight:700;color:var(--accent);font-size:.95rem;width:100%}
-.section-label,.form-label{font-weight:600;font-size:.84rem;color:var(--muted);margin-bottom:5px}
-.section-label{display:block;margin-top:14px}
-
-/* ===== ฟอร์ม ===== */
-.form-control,.form-select{background-color:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
-.form-control::placeholder{color:var(--muted);opacity:.6}
-.form-control:focus,.form-select:focus{background-color:var(--card);color:var(--ink);border-color:var(--gold);box-shadow:0 0 0 3px var(--halo)}
-.form-control[readonly]{background-color:var(--bg2);font-weight:700}
-.input-group{border-radius:6px;overflow:hidden;border:1px solid var(--line);background:var(--card2)}
-.input-group .form-control{border:0;border-radius:0}
-.input-group .btn{border-radius:0}
-
-/* ===== ปุ่ม ===== */
-.btn{border-radius:6px;font-weight:600;transition:.2s}
-.btn-primary,.btn-dark,.btn-lux{background:var(--accent);border:0;color:var(--on-accent)}
-.btn-primary:hover,.btn-dark:hover,.btn-lux:hover,.btn-primary:focus,.btn-dark:focus{background:var(--accent-hover);color:var(--on-accent)}
-.btn-success{background:var(--gold);border:0;color:#1d1708}
-.btn-success:hover{background:var(--gold-hover);color:#1d1708}
-.btn-outline-primary,.btn-outline-dark,.btn-outline-brown{color:var(--accent);border:1.5px solid var(--accent);background:transparent}
-.btn-outline-primary:hover,.btn-outline-dark:hover,.btn-outline-brown:hover{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
-.btn-outline-secondary{color:var(--muted);border:1.5px solid var(--line);background:transparent}
-.btn-outline-secondary:hover{background:var(--card2);color:var(--ink);border-color:var(--line)}
-.btn-secondary,.btn-light{background:var(--card2);color:var(--ink);border:1px solid var(--line)}
-.btn-warning{background:#e9c46a;border:0;color:#2b2100}
-.btn:disabled{opacity:.55}
-
-/* ===== ตาราง / โมดอล ===== */
-.table{--bs-table-color:var(--ink);--bs-table-bg:transparent;--bs-table-hover-bg:var(--halo);--bs-table-border-color:var(--line)}
-.table-light{--bs-table-bg:var(--card2);--bs-table-color:var(--accent)}
-.modal-content{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.modal-header{background:var(--accent);color:var(--on-accent);border-bottom:3px solid var(--gold)}
-.modal-header .btn-close{filter:var(--close-filter)}
-.bg-light{background-color:var(--card2)!important}
-.text-muted{color:var(--muted)!important}
-.text-primary{color:var(--accent)!important}
-.badge-cn{background:var(--halo);color:var(--accent);border:1px solid var(--line);font-weight:700}
-.spinner-border{color:var(--gold)}
-
-@media print{.aw-top,.aw-dock,.aw-links{display:none!important}}
-</style>
-<script>
-(function(){
-  var BASE = "<?= getAppUrl() ?>";
-  window.AW_BASE = BASE;
-  // [หน้า, ชื่อเมนูเริ่มต้น, ไอคอน, เฉพาะแอดมิน]
-  var NAV = [["Register","ลงทะเบียน","📝",0],["Search","ค้นหา","🔍",0],["Index","บันทึกรักษา","🩺",0],["Pharmacy","จ่ายยา","💊",0],
-             ["tracking","สรีระ","📐",0],["element","ธาตุเจ้าเรือน","🍃",0],["History","ประวัติ","📋",0],["Admin","ตั้งค่า","⚙️",1]];
-
-  function ls(k, v){
-    try{
-      if (v === undefined) return localStorage.getItem(k);
-      if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v);
-    }catch(e){ return null; }
-  }
-  function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-  ls('aw_cn', null); ls('aw_cn_name', null);
-  window.awLS = ls;
-
-  var navTimer = null;
-  function cancelNavTimer(){ if (navTimer){ clearTimeout(navTimer); navTimer = null; } }
-  window.addEventListener('pagehide', cancelNavTimer);
-  window.addEventListener('beforeunload', cancelNavTimer);
-
-  window.awGo = function(p, params){
-    var q = '?p=' + p;
-    if (params) Object.keys(params).forEach(function(k){ if (params[k] !== '' && params[k] != null) q += '&' + k + '=' + encodeURIComponent(params[k]); });
-    var url = BASE + q;
+window.awGo = function(p, params){
+var q = '?p=' + p;
+if (params) Object.keys(params).forEach(function(k){ if (params[k] !== '' && params[k] != null) q += '&' + k + '=' + encodeURIComponent(params[k]); });
+var url = BASE + q;
+    awNav(url);
     try { window.top.location.href = url; } catch(e){}
-    cancelNavTimer();
-    navTimer = setTimeout(function(){ awShowGo(url); }, 4000);
-  };
-  window.awShowGo = function(url, msg, btn){
-    if (document.getElementById('awGoBox')) return;
-    var d = document.createElement('div'); d.id = 'awGoBox';
-    d.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px';
-    d.innerHTML = '<div style="background:#fff;color:#1d2a26;border-radius:12px;padding:22px;max-width:340px;width:100%;text-align:center;font-family:Sarabun,sans-serif">'
-      + '<div style="font-weight:700;margin-bottom:6px">' + esc(msg || 'ดำเนินการสำเร็จ') + '</div><div style="font-size:.88rem;color:#66726c;margin-bottom:14px">แตะปุ่มด้านล่างเพื่อไปหน้าถัดไป</div>'
+cancelNavTimer();
+navTimer = setTimeout(function(){ awShowGo(url); }, 4000);
+};
+@@ -142,7 +122,7 @@
+d.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px';
+d.innerHTML = '<div style="background:#fff;color:#1d2a26;border-radius:12px;padding:22px;max-width:340px;width:100%;text-align:center;font-family:Sarabun,sans-serif">'
++ '<div style="font-weight:700;margin-bottom:6px">' + esc(msg || 'ดำเนินการสำเร็จ') + '</div><div style="font-size:.88rem;color:#66726c;margin-bottom:14px">แตะปุ่มด้านล่างเพื่อไปหน้าถัดไป</div>'
+      + '<a href="' + url + '" target="_top" onclick="awNav(this.href);return false" style="display:block;background:var(--accent);color:var(--on-accent);padding:12px;border-radius:8px;text-decoration:none;font-weight:700">' + esc(btn || 'ไปต่อ →') + '</a></div>';
       + '<a href="' + url + '" target="_top" style="display:block;background:var(--accent);color:var(--on-accent);padding:12px;border-radius:8px;text-decoration:none;font-weight:700">' + esc(btn || 'ไปต่อ →') + '</a></div>';
-    document.body.appendChild(d);
-  };
-  window.awStorageOk = function(){
-    try { localStorage.setItem('aw_t', '1'); var ok = localStorage.getItem('aw_t') === '1'; localStorage.removeItem('aw_t'); return ok; }
-    catch(e){ return false; }
-  };
-  window.awIsLoggedIn = function(){ return !!ls('currentUser') && ls('lastLoginDate') === new Date().toLocaleDateString(); };
-  window.awIsAdmin = function(){ return ls('aw_role') === 'admin'; };
-  window.awToken = function(){ return ls('aw_token') || ''; };
-  window.awLogout = function(){ ['currentUser','lastLoginDate','aw_token','aw_role','aw_display','aw_pending'].forEach(function(k){ ls(k, null); }); awGo('Login'); };
-  window.awSetPatient = function(){};
-  window.awClearPatient = function(){};
-
-  var BRAND_DEF = { name:'อพัย เวลเนส', subtitle:'ระบบเวชระเบียนคลินิกการแพทย์แผนไทย', crest:'อ',
-    clinicFull:'อพัย เวลเนส คลินิกการแพทย์แผนไทย', phone:'', loginTitle:'เข้าสู่ระบบ',
-    loginSub:'กรุณาเข้าสู่ระบบเพื่อใช้งานระบบเวชระเบียน', nav:{} };
-
-  function hx(c){ c = String(c || '').trim(); return /^#[0-9a-f]{6}$/i.test(c) ? c.toLowerCase() : null; }
-  function rgbOf(c){ return [parseInt(c.substr(1,2),16), parseInt(c.substr(3,2),16), parseInt(c.substr(5,2),16)]; }
-  function hexOf(a){ return '#' + a.map(function(v){ v = Math.max(0, Math.min(255, Math.round(v))); return ('0' + v.toString(16)).slice(-2); }).join(''); }
-  function mixC(a, b, t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
-  window.awColorApply = function(c){
-    c = c || {};
-    var p = hx(c.primary) || '#1f4d3f', g = hx(c.gold) || '#b08d3c', bg = hx(c.bg) || '#f4f2ed';
-    var P = rgbOf(p), G = rgbOf(g), B = rgbOf(bg), W = [255,255,255], K = [0,0,0];
-    var s = document.documentElement.style;
-    s.setProperty('--accent', p); s.setProperty('--gold', g); s.setProperty('--accent2', g);
-    s.setProperty('--accent-rgb', P.join(',')); s.setProperty('--gold-rgb', G.join(','));
-    s.setProperty('--accent-hover', hexOf(mixC(P, W, .18))); s.setProperty('--gold-hover', hexOf(mixC(G, W, .15)));
-    s.setProperty('--grad', 'linear-gradient(135deg,' + hexOf(mixC(P, W, .18)) + ',' + p + ')');
-    s.setProperty('--line', 'rgba(' + P.join(',') + ',.16)');
-    s.setProperty('--halo', 'rgba(' + G.join(',') + ',.13)');
-    s.setProperty('--bg', bg); s.setProperty('--bg2', hexOf(mixC(B, K, .04))); s.setProperty('--card2', hexOf(mixC(B, W, .55)));
-    var lum = (0.299*P[0] + 0.587*P[1] + 0.114*P[2]) / 255;
-    s.setProperty('--on-accent', lum > 0.62 ? '#1d1708' : '#ffffff');
-  };
-
-  var cachedB = null; try { cachedB = JSON.parse(ls('aw_brand') || 'null'); } catch(e){}
-  window.AW_BRAND = cachedB || BRAND_DEF;
-  awColorApply(window.AW_BRAND.colors);
-  window.awBrandApply = function(b){
-    if (!b) return; window.AW_BRAND = b; awColorApply(b.colors);
-    [].forEach.call(document.querySelectorAll('[data-brand]'), function(el){ var v = b[el.getAttribute('data-brand')]; if (v) el.textContent = v; });
-    [].forEach.call(document.querySelectorAll('[data-nav]'), function(el){ var v = b.nav && b.nav[el.getAttribute('data-nav')]; if (v) el.textContent = v; });
-  };
-  window.awBrandRefresh = function(){
-    google.script.run.withSuccessHandler(function(b){ if (!b) return; ls('aw_brand', JSON.stringify(b)); awBrandApply(b); }).getBranding();
-  };
-
-  var KEY_ALIAS = {'ศีรษะ':'head','หัว':'head','ศีรษะ/คอ':'head','แนวสันหลัง':'spine','สันหลัง':'spine','ลำตัว':'spine',
-                   'ไหล่':'shoulder','บ่า':'shoulder','ศอก':'elbow','ข้อมือ':'wrist','สะโพก':'hip','เข่า':'knee','ข้อเท้า':'ankle'};
-  function loose(rule, val){
-    rule = String(rule || '').trim(); val = String(val || '').trim();
-    if (!rule || rule === 'ทุกมุม' || rule === 'ทุกส่วน') return true;
-    if (!val) return false;
-    return val.indexOf(rule) > -1 || rule.indexOf(val) > -1;
-  }
-  window.awMatchPostureDx = function(rules, rec){
-    var out = []; if (!rec) return out;
-    (rules || []).forEach(function(r){
-      if (!loose(r.view, rec.view)) return;
-      if (!(loose(r.region, rec.region) || String(rec.region || '') === 'ทั้งตัว')) return;
-      var item = String(r.item || '').trim(), key = KEY_ALIAS[item] || item, txt = '';
-      if (!item){
-        txt = ['head','spine','shoulder','elbow','wrist','hip','knee','ankle'].map(function(k){ return rec[k] || ''; }).join(' | ') + ' | ' + (rec.extra || '');
-      } else {
-        txt = rec[key] || '';
-        if (!txt || String(txt).trim() === '-'){
-          String(rec.extra || '').split(' | ').forEach(function(seg){
-            var i = seg.indexOf(': ');
-            if (i > 0){ var lb = seg.substring(0, i).trim(); if (lb === item || lb === key || KEY_ALIAS[lb] === key) txt = seg.substring(i + 2); }
-          });
-        }
-      }
-      txt = String(txt || '').trim();
-      if (!txt || txt === '-' || txt === 'ไม่พบข้อมูล') return;
-      if (r.keyword && txt.indexOf(r.keyword) === -1) return;
-      if (r.minDeg){ var m = txt.match(/(\d+(?:\.\d+)?)\s*°/); if (!m || parseFloat(m[1]) < r.minDeg) return; }
-      out.push({ rule: r, found: (rec.view || '') + ' • ' + (rec.region || '') + ' — ' + txt });
-    });
-    return out;
-  };
-
-  window.awToggleLinks = function(){
-    var box = document.getElementById('awLinks'); if (!box) return;
-    if (box.style.display === 'block'){ box.style.display = 'none'; return; }
-    box.style.display = 'block';
-    box.innerHTML = '<div class="p-3 small text-muted">กำลังโหลด...</div>';
-    google.script.run.withSuccessHandler(function(list){
-      list = list || [];
-      if (!list.length){ box.innerHTML = '<div class="p-3 small text-muted">ยังไม่มีลิงก์ (แอดมินเพิ่มได้ที่หน้า "ตั้งค่า")</div>'; return; }
-      box.innerHTML = list.map(function(l){
-        return '<a href="' + esc(l.url) + '" target="_blank" rel="noopener">🔗 ' + esc(l.name || l.url) + (l.note ? '<small>' + esc(l.note) + '</small>' : '') + '</a>';
-      }).join('');
-    }).withFailureHandler(function(e){ box.innerHTML = '<div class="p-3 small text-danger">' + esc(e.message || e) + '</div>'; }).getLinks();
-  };
-  document.addEventListener('click', function(e){
-    var box = document.getElementById('awLinks');
-    if (box && box.style.display === 'block' && !box.contains(e.target) && !e.target.closest('[data-aw-links]')) box.style.display = 'none';
-  });
-
-  function veil(msg, withLink){
-    var v = document.getElementById('awVeil');
-    if (!v){
-      v = document.createElement('div'); v.id = 'awVeil';
-      v.style.cssText = 'position:fixed;inset:0;z-index:4000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px;text-align:center;font-family:Sarabun,sans-serif;color:var(--ink)';
-      document.body.appendChild(v);
-    }
-    v.innerHTML = '<div style="max-width:320px"><div style="font-weight:700;margin-bottom:12px">' + esc(msg) + '</div>'
-      + (withLink
+document.body.appendChild(d);
+};
+window.awStorageOk = function(){
+@@ -253,7 +233,7 @@
+}
+v.innerHTML = '<div style="max-width:320px"><div style="font-weight:700;margin-bottom:12px">' + esc(msg) + '</div>'
++ (withLink
+          ? '<a href="' + BASE + '?p=Login" target="_top" onclick="awNav(this.href);return false" style="display:block;background:var(--accent);color:var(--on-accent);padding:12px;border-radius:8px;text-decoration:none;font-weight:700">กลับไปหน้าเข้าสู่ระบบ</a>'
           ? '<a href="' + BASE + '?p=Login" target="_top" style="display:block;background:var(--accent);color:var(--on-accent);padding:12px;border-radius:8px;text-decoration:none;font-weight:700">กลับไปหน้าเข้าสู่ระบบ</a>'
-          : '<div class="spinner-border" role="status"></div>')
-      + '</div>';
-  }
-  function unveil(){ var v = document.getElementById('awVeil'); if (v) v.parentNode.removeChild(v); }
-
-  function boot(){
-    var b = document.body, page = (b.getAttribute('data-page') || '').toLowerCase();
-    var who = ls('aw_display') || ls('currentUser') || '';
-    var h = '<div class="aw-top"><div class="aw-top-in"><div class="aw-crest" data-brand="crest">อ</div>'
-          + '<div class="aw-brand"><b data-brand="name">อพัย เวลเนส</b><small data-brand="subtitle">ระบบเวชระเบียนคลินิกการแพทย์แผนไทย</small></div><div class="aw-sp"></div>'
-          + '<span class="aw-user d-none d-sm-inline">ผู้ใช้งาน: ' + esc(who) + (awIsAdmin() ? ' (แอดมิน)' : '') + '</span>'
-          + '<button type="button" class="aw-logout" data-aw-links="1" onclick="awToggleLinks()">🔗 ลิงก์</button>'
-          + '<button type="button" class="aw-logout" onclick="awLogout()">ออกจากระบบ</button></div>'
-          + '<div class="aw-links" id="awLinks" style="display:none"></div></div>';
-    b.insertAdjacentHTML('afterbegin', h);
-
-    var d = '<nav class="aw-dock">';
-    NAV.forEach(function(x){
-      if (x[3] && !awIsAdmin()) return;
+: '<div class="spinner-border" role="status"></div>')
++ '</div>';
+}
+@@ -273,7 +253,7 @@
+var d = '<nav class="aw-dock">';
+NAV.forEach(function(x){
+if (x[3] && !awIsAdmin()) return;
+      d += '<a target="_top" onclick="awNav(this.href);return false" href="' + BASE + '?p=' + x[0] + '" class="' + (x[0].toLowerCase() === page ? 'active' : '') + '">'
       d += '<a target="_top" href="' + BASE + '?p=' + x[0] + '" class="' + (x[0].toLowerCase() === page ? 'active' : '') + '">'
-         + '<span class="i">' + x[2] + '</span><span data-nav="' + x[0] + '">' + x[1] + '</span></a>';
-    });
-    d += '</nav>';
-    b.insertAdjacentHTML('beforeend', d);
-    b.classList.add('aw-has-dock');
-    awBrandApply(window.AW_BRAND); awBrandRefresh();
-  }
-
-  document.addEventListener('DOMContentLoaded', function(){
-    var b = document.body, page = (b.getAttribute('data-page') || '').toLowerCase();
-    var embed = b.getAttribute('data-shell') === 'none';
-    awBrandApply(window.AW_BRAND);
-    if (page === 'login'){ awBrandRefresh(); return; }
-    if (embed) return;
-    if (awIsLoggedIn()){ boot(); return; }
-
-    var pend = null;
-    try { pend = JSON.parse(ls('aw_pending') || 'null'); } catch(e){}
-    ls('aw_pending', null);
-    if (!pend || !pend.u){
-      veil('กรุณาเข้าสู่ระบบก่อนใช้งาน', true);
-      awGo('Login');
-      return;
-    }
-    veil('กำลังตรวจสอบการเข้าสู่ระบบ...', false);
-    function reject(msg){
-      ls('aw_loginerr', msg);
-      veil(msg, true);
-      awGo('Login');
-    }
-    google.script.run
-      .withSuccessHandler(function(r){
-        if (!r || !r.success){ reject('ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง'); return; }
-        ls('currentUser', r.username);
-        ls('lastLoginDate', new Date().toLocaleDateString());
-        ls('aw_token', r.token); ls('aw_role', r.role); ls('aw_display', r.displayName);
-        unveil();
-        boot();
-      })
-      .withFailureHandler(function(e){ reject('เข้าสู่ระบบไม่สำเร็จ: ' + ((e && e.message) || e)); })
-      .checkLoginFromSheet(pend.u, pend.p);
-  });
-})();
-</script>
++ '<span class="i">' + x[2] + '</span><span data-nav="' + x[0] + '">' + x[1] + '</span></a>';
+});
+d += '</nav>';
