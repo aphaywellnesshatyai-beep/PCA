@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>ใบเสร็จรับเงิน - <?= brand.clinicFull ?></title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Sarabun', sans-serif; padding: 20px; color: #333; line-height: 1.5; background: #f5f5f5; margin: 0; }
+    .receipt-box { border: 1px solid #000; padding: 40px; width: 210mm; max-width: 100%; margin: auto; background: white; position: relative; min-height: 297mm; box-shadow: 0 0 15px rgba(0,0,0,0.1); }
+    .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 25px; }
+    .logo { height: 64px; max-width: 180px; object-fit: contain; display: block; margin: 0 auto 6px; }
+    .clinic-address { font-size: 14px; margin: 2px 0; color: #555; }
+    .row { display: flex; justify-content: space-between; margin-bottom: 12px; }
+    .patient-info { margin: 25px 0; line-height: 2.2; }
+    .info-label { font-weight: bold; min-width: 130px; display: inline-block; }
+    .input-fill { border: none; border-bottom: 1px dotted #ccc; background: transparent; font-family: 'Sarabun'; width: 100%; outline: none; padding: 2px; font-size: 16px; color: #003366; font-weight: bold; }
+    .input-fill:focus { background: #fdfdfd; border-bottom: 1px solid #007bff; }
+    table { width: 100%; border-collapse: collapse; margin-top: 25px; }
+    th { border-top: 2px solid #333; border-bottom: 2px solid #333; padding: 12px 10px; background-color: #fcfcfc; }
+    td { padding: 12px 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    .total-section { margin-top: 20px; border-top: 2px solid #333; padding-top: 15px; }
+    .baht-text { background: #f8f9fa; padding: 8px 15px; border: 1px solid #ddd; font-weight: bold; margin-top: 10px; color: #444; text-align: center; font-size: 15px; border-radius: 4px; }
+    .receipt-note { margin-top: 12px; font-size: 14px; color: #555; text-align: center; }
+    .footer { margin-top: 30px; text-align: right; }
+    .sign-box { display: inline-block; text-align: center; width: 320px; }
+    .no-print { text-align: center; margin: 20px 0; }
+    .btn-print { background: #1e7e34; color: white; padding: 15px 35px; border: none; border-radius: 50px; cursor: pointer; font-weight: bold; font-family: 'Sarabun'; font-size: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: 0.3s; }
+    .btn-print:hover { background: #155724; transform: scale(1.05); }
+
+    @media print {
+      @page { size: A4; margin: 0; }
+      body { background: white; padding: 0; margin: 0; }
+      .no-print { display: none; }
+      .receipt-box { border: none; box-shadow: none; width: 100%; padding: 20mm; }
+      .input-fill { border-bottom: none !important; -webkit-appearance: none; appearance: none; }
+      .baht-text { border: 1px solid #333; background: transparent; }
+      select.input-fill { -webkit-appearance: none; appearance: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <button class="btn-print" id="printBtn" onclick="printAndSavePDF()">🖨️ พิมพ์ใบเสร็จและบันทึกลง Drive</button>
+  </div>
+
+  <div class="receipt-box">
+    <div class="header">
+      <? if (logo) { ?><img class="logo" src="<?= logo ?>" alt=""><? } ?>
+      <h2 style="margin:0; font-size: 28px;">ใบเสร็จรับเงิน / Receipt</h2>
+      <p style="margin:8px 0; font-size: 18px;"><strong><?= brand.clinicFull ?></strong></p>
+      <? if (brand.address) { ?><p class="clinic-address"><?= brand.address ?></p><? } ?>
+      <? var contact = [brand.phone ? 'โทร ' + brand.phone : '', brand.email].filter(function (x) { return x; }).join(' · '); ?>
+      <? if (contact) { ?><p class="clinic-address"><?= contact ?></p><? } ?>
+      <? if (brand.taxId) { ?><p style="font-size: 14px; margin:5px 0;">เลขประจำตัวผู้เสียภาษี: <?= brand.taxId ?></p><? } ?>
+    </div>
+
+    <div class="row">
+      <span><strong>วันที่ (Date):</strong> <span id="displayDate" style="color: #003366; font-weight: bold;"></span></span>
+      <span><strong>เลขที่ (No.):</strong> <span id="displayREC" style="color: #d9534f; font-weight: bold;"></span></span>
+    </div>
+
+    <div class="patient-info">
+      <div style="display: flex; align-items: baseline;">
+        <span class="info-label">ได้รับเงินจาก:</span>
+        <span style="flex: 1; border-bottom: 1px dotted #ccc; min-height: 24px; font-weight: bold; color: #003366;"><?= name ?> (CN: <?= cn ?>)</span>
+      </div>
+      <div style="margin-top: 10px;">
+        <span class="info-label">เลขบัตรประชาชน:</span>
+        <span style="border-bottom: 1px dotted #ccc; padding-right: 20px; color: #003366; font-weight: bold;"><?= idCard ?></span>
+      </div>
+      <div style="display: flex; margin-top: 10px;">
+        <span class="info-label">ที่อยู่ (Address):</span>
+        <span style="flex: 1; border-bottom: 1px dotted #ccc; min-height: 24px; color: #555;"><?= address ?></span>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align: center; width: 10%;">ลำดับ</th>
+          <th style="text-align: left; width: 65%;">รายการ (Description)</th>
+          <th style="text-align: right; width: 25%;">จำนวนเงิน (Amount)</th>
+        </tr>
+      </thead>
+      <tbody id="itemTable">
+        <tr>
+          <td style="text-align: center;">1</td>
+          <td><input type="text" class="input-fill" value="ค่าบริการตรวจรักษา/หัตถการ (<?= treatment || '-' ?>)"></td>
+          <td><input type="number" class="input-fill qty" style="text-align: right;" placeholder="0.00" oninput="calculateTotal()"></td>
+        </tr>
+        <tr>
+          <td style="text-align: center;">2</td>
+          <td><input type="text" class="input-fill" placeholder="ระบุรายการเพิ่มเติม..."></td>
+          <td><input type="number" class="input-fill qty" style="text-align: right;" oninput="calculateTotal()"></td>
+        </tr>
+        <tr>
+          <td style="text-align: center;">3</td>
+          <td><input type="text" class="input-fill" placeholder="..."></td>
+          <td><input type="number" class="input-fill qty" style="text-align: right;" oninput="calculateTotal()"></td>
+        </tr>
+        <tr>
+          <td style="text-align: center;">4</td>
+          <td><input type="text" class="input-fill" placeholder="..."></td>
+          <td><input type="number" class="input-fill qty" style="text-align: right;" oninput="calculateTotal()"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="total-section">
+      <div class="row" style="font-size: 20px; margin-top: 10px;">
+        <strong>รวมเงินทั้งสิ้น (Grand Total)</strong>
+        <strong id="grandTotal" style="color: #d9534f;">0.00 บาท</strong>
+      </div>
+      <div class="baht-text" id="thaiText">(-ศูนย์บาทถ้วน-)</div>
+      <? if (brand.receiptNote) { ?><div class="receipt-note"><?= brand.receiptNote ?></div><? } ?>
+    </div>
+
+    <div class="footer">
+      <div class="sign-box">
+        <p>ลงชื่อ...........................................ผู้รับเงิน</p>
+        <p style="font-weight: bold; margin-top: 10px;">( <?= brand.receiverName ?> )</p>
+        <p style="font-size: 13px; color: #777;">วันที่ <span id="footerDate"></span></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      const today = new Date();
+      const thaiDate = today.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+      document.getElementById('displayDate').innerText = thaiDate;
+      document.getElementById('footerDate').innerText = thaiDate;
+      const yy = (today.getFullYear() + 543).toString().slice(-2);
+      const mm = (today.getMonth() + 1).toString().padStart(2, '0');
+      const dd = today.getDate().toString().padStart(2, '0');
+      document.getElementById('displayREC').innerText = yy + mm + dd + "<?= recNo ?>";
+    };
+
+    function calculateTotal() {
+      let total = 0;
+      document.querySelectorAll('.qty').forEach(input => { total += parseFloat(input.value) || 0; });
+      document.getElementById('grandTotal').innerText = total.toLocaleString('th-TH', { minimumFractionDigits: 2 }) + " บาท";
+      document.getElementById('thaiText').innerText = "(" + ThaiBaht(total) + ")";
+    }
+
+    function printAndSavePDF() {
+      window.print();
+      const element = document.querySelector('.receipt-box');
+      const recNo = document.getElementById('displayREC').innerText;
+      const cleanName = "<?= name ?>".replace(/[\/\\*?:"<>|]/g, "").trim();
+      const filename = "ใบเสร็จ_" + recNo + "_" + (cleanName || "คนไข้ทั่วไป") + ".pdf";
+      const opt = { margin: 10, filename: filename, image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+      const btn = document.getElementById('printBtn');
+      const oldText = btn.innerText;
+      html2pdf().set(opt).from(element).outputPdf('datauristring').then(function (pdfBase64) {
+        const base64Data = pdfBase64.split(',')[1];
+        btn.innerText = "⏳ กำลังบันทึกลง Drive..."; btn.disabled = true;
+        google.script.run
+          .withSuccessHandler(function(response) { alert(response); btn.innerText = oldText; btn.disabled = false; })
+          .withFailureHandler(function(error) { alert("❌ บันทึกไม่สำเร็จ ระบบแจ้งว่า: " + error.message); btn.innerText = oldText; btn.disabled = false; })
+          .saveReceiptPDF(base64Data, filename);
+      });
+    }
+
+    function ThaiBaht(Number) {
+      if (Number == 0) return "ศูนย์บาทถ้วน";
+      var number = Number.toFixed(2).split('.');
+      var baht = number[0], satang = number[1], output = "";
+      var numberText = ["ศูนย์", "หนึ่ง", "สอง", "สาม", "สี่", "ห้า", "หก", "เจ็ด", "แปด", "เก้า"];
+      var unitText = ["", "สิบ", "ร้อย", "พัน", "หมื่น", "แสน", "ล้าน"];
+      for (var i = 0; i < baht.length; i++) {
+        var n = baht[baht.length - 1 - i];
+        if (n != 0) {
+          if (i % 6 == 1 && n == 1) output = "สิบ" + output;
+          else if (i % 6 == 1 && n == 2) output = "ยี่สิบ" + output;
+          else if (i % 6 == 0 && n == 1 && i > 0) output = "เอ็ด" + output;
+          else output = numberText[n] + unitText[i % 6] + output;
+        }
+        if (i != 0 && i % 6 == 0) output = "ล้าน" + output;
+      }
+      output += "บาท";
+      if (satang == "00") output += "ถ้วน";
+      else {
+        var s0 = parseInt(satang[0]), s1 = parseInt(satang[1]);
+        if (s0 > 0) { if (s0 == 1) output += "สิบ"; else if (s0 == 2) output += "ยี่สิบ"; else output += numberText[s0] + "สิบ"; }
+        if (s1 > 0) { if (s1 == 1 && s0 > 0) output += "เอ็ด"; else output += numberText[s1]; }
+        output += "สตางค์";
+      }
+      return output;
+    }
+  </script>
+</body>
+</html>

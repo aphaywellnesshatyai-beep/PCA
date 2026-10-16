@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <?!= include('Theme') ?>
+  <style>
+    .search-input{padding:13px 16px;font-size:1.05rem}
+    .card-patient{border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:8px;padding:16px 18px;margin-bottom:12px;background:var(--card)}
+    .card-patient.hl{background:var(--halo)}
+    .pt-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+    .pt-actions .btn{font-size:.84rem;padding:6px 12px}
+    .table-custom th,.table-custom td{padding:12px}
+  </style>
+</head>
+<body data-page="Search">
+  <div class="page card-lux" style="max-width:960px">
+    <h3 class="header-title">ค้นหาผู้ป่วย</h3>
+    <p class="header-sub">ค้นหาด้วยเลข CN ชื่อ หรือเบอร์โทร แล้วกด "บันทึกการรักษา" เพื่อเข้าสู่หน้าบันทึกการรักษา</p>
+    <div class="input-group mb-4">
+      <input type="text" id="searchInput" class="form-control search-input" placeholder="พิมพ์ CN, ชื่อ หรือเบอร์โทร...">
+      <button class="btn btn-primary px-4" onclick="startSearch()">ค้นหา</button>
+      <button class="btn btn-outline-secondary px-3" onclick="showAllPatientsModal()">รายชื่อทั้งหมด</button>
+    </div>
+    <div id="status" class="text-center" style="display:none;padding:40px;">
+      <div class="spinner-border" role="status"></div>
+      <p class="mt-3 text-muted">กำลังค้นหาในฐานข้อมูล...</p>
+    </div>
+    <div id="resultArea"></div>
+  </div>
+
+  <!-- รายชื่อทั้งหมด -->
+  <div class="modal fade" id="allPatientsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">รายชื่อผู้ป่วยทั้งหมดในระบบ</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 table-custom">
+              <thead class="table-light"><tr><th class="ps-4">CN</th><th>AM</th><th>ชื่อ-นามสกุล</th><th>ชื่อเล่น</th><th>เบอร์ติดต่อ</th><th class="text-center">เลือก</th></tr></thead>
+              <tbody id="allPatientsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ข้อมูลผู้ป่วย -->
+  <div class="modal fade" id="infoModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">รายละเอียดเวชระเบียน</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body p-4" id="infoContent"></div>
+        <div class="modal-footer flex-column gap-2">
+          <div class="d-flex w-100 gap-2">
+            <button type="button" class="btn btn-primary flex-grow-1" onclick="goVisit(activeIdx)">บันทึกการรักษา</button>
+            <button type="button" class="btn btn-warning flex-grow-1" onclick="goEdit(activeIdx)">แก้ไขข้อมูล</button>
+          </div>
+          <div class="d-flex w-100 gap-2">
+            <button type="button" class="btn btn-outline-dark flex-grow-1" onclick="printPatientCover()">พิมพ์ปก A5</button>
+            <button type="button" class="btn btn-outline-dark flex-grow-1" onclick="printPatientSummary()">พิมพ์สรุป</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    var CN_URL = "<?= cn ?>";
+    var currentResults = [], allList = [], activeIdx = null;
+
+    function $(id){ return document.getElementById(id); }
+    function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function fullName(p){ return (p.prefix || '') + (p.name || ''); }
+
+    function startSearch(){
+      var q = $('searchInput').value.trim();
+      if (!q) return alert("กรุณากรอกคำค้นหา");
+      $('status').style.display = 'block'; $('resultArea').innerHTML = '';
+      google.script.run
+        .withSuccessHandler(function(results){ $('status').style.display = 'none'; currentResults = results || []; displayResults(); })
+        .withFailureHandler(function(err){ $('status').style.display = 'none'; alert("ค้นหาไม่สำเร็จ: " + err.message); })
+        .searchAllPatients(q);
+    }
+
+    function displayResults(){
+      if (!currentResults.length){ $('resultArea').innerHTML = '<div class="text-center py-5 text-muted">ไม่พบข้อมูลที่ค้นหา</div>'; return; }
+      var html = '';
+      currentResults.forEach(function(p, i){
+        html += '<div class="card-patient' + (CN_URL && p.cn === CN_URL ? ' hl' : '') + '">'
+          + '<div class="d-flex flex-wrap justify-content-between gap-2">'
+          + '<div><span class="badge badge-cn px-3 py-2 mb-2">CN ' + esc(p.cn) + '</span>'
+          + '<h5 class="mb-1 fw-bold">' + esc(fullName(p)) + (p.nickname ? ' <small class="text-muted">(' + esc(p.nickname) + ')</small>' : '') + '</h5>'
+          + '<div class="small text-muted">โทร: ' + esc(p.phone || '-') + ' · วันเกิด: ' + esc(p.dob || '-') + ' · สิทธิ: ' + esc(p.medicalPlan || '-') + '</div>'
+          + (p.disease ? '<div class="small mt-1" style="color:var(--bad)">แพ้ยา/โรคประจำตัว: ' + esc(p.disease) + '</div>' : '')
+          + '</div></div>'
+          + '<div class="pt-actions">'
+          + '<button class="btn btn-primary" onclick="goVisit(' + i + ')">บันทึกการรักษา</button>'
+          + '<button class="btn btn-warning" onclick="goEdit(' + i + ')">แก้ไขข้อมูล</button>'
+          + '<button class="btn btn-outline-secondary" onclick="showPatientInfo(' + i + ')">ดูข้อมูล</button>'
+          + '<button class="btn btn-outline-primary" onclick="goHistory(' + i + ')">ประวัติการรักษา</button>'
+          + '<button class="btn btn-outline-primary" onclick="goPose(' + i + ')">Posture Tracking</button>'
+          + '</div></div>';
+      });
+      $('resultArea').innerHTML = html;
+    }
+
+    function showAllPatientsModal(){
+      var m = new bootstrap.Modal($('allPatientsModal'));
+      $('allPatientsBody').innerHTML = '<tr><td colspan="6" class="text-center py-5"><div class="spinner-border"></div></td></tr>';
+      m.show();
+      google.script.run.withSuccessHandler(function(results){
+        allList = results || [];
+        var html = '';
+        if (!allList.length) html = '<tr><td colspan="6" class="text-center py-4 text-muted">ไม่พบข้อมูล</td></tr>';
+        allList.forEach(function(p, i){
+          html += '<tr><td class="ps-4"><span class="badge badge-cn px-2 py-1">CN ' + esc(p.cn) + '</span></td><td>' + esc(p.am || '-') + '</td>'
+               + '<td><b>' + esc(fullName(p)) + '</b></td><td>' + esc(p.nickname || '-') + '</td><td>' + esc(p.phone || '-') + '</td>'
+               + '<td class="text-center"><button class="btn btn-primary btn-sm" onclick="pickFromAll(' + i + ')">เลือก</button></td></tr>';
+        });
+        $('allPatientsBody').innerHTML = html;
+      }).searchAllPatients("");
+    }
+    function pickFromAll(i){ currentResults = [allList[i]]; goVisit(0); }
+
+    /* ---------- ส่งต่อไปหน้าอื่น (ทุกปุ่มใช้ index ของ currentResults) ---------- */
+    function remember(i){ var p = currentResults[i]; if (p) awSetPatient(p.cn, fullName(p)); return p; }
+    function goVisit(i){ var p = remember(i); if (p) awGo('Index', { cn: p.cn }); }
+    function goEdit(i){ var p = remember(i); if (p) awGo('Register', { mode: 'edit', cn: p.cn }); }
+    function goHistory(i){ var p = remember(i); if (p) awGo('History', { cn: p.cn }); }
+    function goPose(i){ var p = remember(i); if (p) awGo('tracking', { cn: p.cn }); }
+
+    function showPatientInfo(i){
+      var p = currentResults[i]; if (!p) return;
+      activeIdx = i;
+      var f = function(l, v, col){ return '<div class="' + (col || 'col-6') + '"><small class="text-muted d-block">' + l + '</small><b>' + esc(v || '-') + '</b></div>'; };
+      $('infoContent').innerHTML = '<div class="row g-3">'
+        + f('เลข CN', p.cn) + f('เลข AM', p.am) + f('เลขบัตรประชาชน', p.idCard, 'col-12')
+        + f('ชื่อ-นามสกุล (ชื่อเล่น)', fullName(p) + ' (' + (p.nickname || '-') + ')', 'col-12')
+        + f('วันเกิด', p.dob) + f('เพศ', p.gender)
+        + f('น้ำหนัก/ส่วนสูง', (p.weight || '-') + ' กก. / ' + (p.height || '-') + ' ซม.') + f('เบอร์โทร', p.phone)
+        + f('อาชีพ', p.job) + f('สิทธิการรักษา', p.medicalPlan)
+        + f('ที่อยู่', p.address, 'col-12')
+        + f('ญาติ', p.relName) + f('เบอร์ฉุกเฉิน', p.relPhone)
+        + '<div class="col-12"><div class="p-3 rounded" style="background:#fbf0ef;color:var(--bad)"><small class="fw-bold d-block">แพ้ยา/โรคประจำตัว</small>' + esc(p.disease || 'ไม่มีข้อมูล') + '</div></div>'
+        + '</div>';
+      new bootstrap.Modal($('infoModal')).show();
+    }
+
+    function printPatientCover(){
+      var p = currentResults[activeIdx]; if (!p) return;
+      var w = window.open('', '_blank');
+      w.document.write('<html><head><meta charset="UTF-8"><title>ปกเวชระเบียน</title><style>'
+        + '@import url("https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap");@page{size:A4;margin:0}'
+        + 'body{font-family:Sarabun,sans-serif;margin:0}.upper{height:14.8cm}.lower{height:14.8cm;padding:2cm;box-sizing:border-box;border-top:1px dashed #ccc;position:relative}'
+        + '.cn{position:absolute;top:1cm;right:2cm;text-align:right}.cn div:first-child{font-size:24pt;border:2px solid #000;padding:5px 15px;font-weight:bold;display:inline-block}'
+        + '.clinic{font-size:22pt;font-weight:bold}.pt{font-size:18pt;margin-top:1.5cm;line-height:1.8}.dis{border-top:2px solid #000;padding-top:10px;margin-top:20px}'
+        + '</style></head><body><div class="upper"></div><div class="lower">'
+        + '<div class="cn"><div>CN: ' + esc(p.cn) + '</div><div style="font-size:16pt;font-weight:bold;margin-top:5px">AM: ' + esc(p.am || '-') + '</div></div>'
+        + '<div class="clinic">อพัย เวลเนส</div><div style="font-size:14pt">คลินิกการแพทย์แผนไทย</div>'
+        + '<div class="pt"><b>ชื่อ-นามสกุล:</b> ' + esc(fullName(p)) + '<br><b>ที่อยู่:</b> ' + esc(p.address || '-') + '<br><b>เบอร์โทรศัพท์:</b> ' + esc(p.phone || '-') + '</div>'
+        + '<div class="dis"><b style="color:#b3392f">ข้อมูลสุขภาพ/แพ้ยา/โรคประจำตัว:</b><br><span style="font-size:16pt">' + esc(p.disease || 'ไม่มีข้อมูล') + '</span></div>'
+        + '</div><script>window.onload=function(){window.print();window.close();}<\/script></body></html>');
+      w.document.close();
+    }
+
+    function printPatientSummary(){
+      var p = currentResults[activeIdx]; if (!p) return;
+      var r = function(a, b, c, d){ return '<tr><td class="l">' + a + '</td><td>' + esc(b || '-') + '</td><td class="l">' + c + '</td><td>' + esc(d || '-') + '</td></tr>'; };
+      var w = window.open('', '_blank');
+      w.document.write('<html><head><meta charset="UTF-8"><title>สรุปข้อมูลผู้ป่วย</title><style>'
+        + '@import url("https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap");@page{size:A5 landscape;margin:.5cm}'
+        + 'body{font-family:Sarabun,sans-serif;font-size:11pt;line-height:1.3}.h{text-align:center;font-weight:bold;font-size:16pt;border-bottom:2px solid #000;margin-bottom:10px;padding-bottom:5px}'
+        + 'table{width:100%;border-collapse:collapse;table-layout:fixed}td{padding:5px;border:1px solid #ddd;vertical-align:top;word-wrap:break-word}.l{font-weight:bold;background:#f2f2f2;width:110px}'
+        + '.sig{margin-top:30px;display:flex;justify-content:space-around}.sig div{width:45%;text-align:center;border-top:1px solid #000;padding-top:5px;margin-top:35px}'
+        + '</style></head><body><div class="h">เวชระเบียนข้อมูลพื้นฐานผู้ป่วย - อพัย เวลเนส</div><table>'
+        + r('เลข CN', p.cn, 'เลข AM', p.am)
+        + r('ชื่อ-นามสกุล', fullName(p) + ' (' + (p.nickname || '-') + ')', 'เลขบัตรประชาชน', p.idCard)
+        + r('ว/ด/ป เกิด', p.dob, 'เพศ', p.gender)
+        + r('น้ำหนัก/ส่วนสูง', (p.weight || '-') + ' กก. / ' + (p.height || '-') + ' ซม.', 'อาชีพ', p.job)
+        + r('เบอร์ติดต่อ', p.phone, 'สิทธิการรักษา', p.medicalPlan)
+        + '<tr><td class="l">ที่อยู่</td><td colspan="3">' + esc(p.address || '-') + '</td></tr>'
+        + r('ญาติฉุกเฉิน', p.relName, 'เบอร์ฉุกเฉิน', p.relPhone)
+        + '<tr><td class="l">แพ้ยา/โรคประจำตัว</td><td colspan="3" style="color:red;font-weight:bold">' + esc(p.disease || '-') + '</td></tr>'
+        + '</table><div class="sig"><div>ลงชื่อผู้ป่วย</div><div>ลงชื่อแพทย์ผู้ตรวจ</div></div>'
+        + '<script>window.onload=function(){window.print();window.close();}<\/script></body></html>');
+      w.document.close();
+    }
+
+    $('searchInput').addEventListener('keypress', function(e){ if (e.key === 'Enter') startSearch(); });
+    window.addEventListener('load', function(){ if (CN_URL){ $('searchInput').value = CN_URL; startSearch(); } });
+  </script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>ฉลากยา - <?= brand.clinicFull ?></title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    @page { size: 100mm 75mm; margin: 0; }
+    body { margin: 0; padding: 0; width: 100mm; height: 75mm; font-family: 'Sarabun', sans-serif; background: white; }
+    .label-container { width: 100mm; height: 75mm; padding: 5mm; box-sizing: border-box; border: 1px solid #eee; display: flex; flex-direction: column; }
+    .header { border-bottom: 1px solid #8b5cf6; padding-bottom: 1.5mm; margin-bottom: 2mm; display: flex; justify-content: space-between; align-items: center; gap: 2mm; }
+    .brand { display: flex; align-items: center; gap: 2mm; min-width: 0; }
+    .brand img { width: 9mm; height: 9mm; object-fit: contain; flex-shrink: 0; }
+    .clinic-name { font-size: 13px; font-weight: bold; color: #8b5cf6; line-height: 1.2; }
+    .contact { font-size: 11px; color: #444; white-space: nowrap; }
+    .patient-info { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 2mm; background: #f9f9f9; padding: 1mm 2mm; }
+    .med-section { text-align: center; }
+    .med-name { font-size: 22px; font-weight: bold; margin: 1mm 0; color: #000; }
+    .usage-box { background: #f1f5f9; padding: 3mm; border-radius: 8px; text-align: left; min-height: 25mm; }
+    .usage-text { font-size: 14px; line-height: 1.4; color: #1e293b; margin-bottom: 2mm; }
+    .desc-text { font-size: 18px; line-height: 1.3; color: #475569; border-top: 1px dashed #cbd5e1; padding-top: 1.5mm; }
+    .warning-section { font-size: 13px; color: #dc2626; font-weight: bold; margin-top: 2mm; text-align: left; padding: 0 2mm; }
+    .footer { margin-top: auto; display: flex; justify-content: space-between; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 1mm; }
+    .no-print-area { display: flex; justify-content: center; padding: 10px; background: #f0f0f0; }
+    .print-button { background-color: #8b5cf6; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; font-family: 'Sarabun', sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    .print-button:hover { background-color: #7c3aed; }
+    @media print {
+      .label-container { border: none; }
+      .no-print-area { display: none !important; }
+      body { background: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="label-container">
+    <div class="header">
+      <div class="brand">
+        <? if (logo) { ?><img src="<?= logo ?>" alt=""><? } ?>
+        <div class="clinic-name"><?= brand.clinicFull ?></div>
+      </div>
+      <? if (brand.phone) { ?><div class="contact">โทร: <?= brand.phone ?></div><? } ?>
+    </div>
+
+    <div class="patient-info">
+      <div>ชื่อ-สกุล: <strong><?= patientName ?></strong></div>
+      <div>CN: <strong><?= cn ?></strong></div>
+    </div>
+
+    <div class="med-section">
+      <div class="med-name"><?= medName ?></div>
+      <div class="usage-box">
+        <div class="usage-text"><strong>วิธีใช้:</strong> <?= medUsage ?></div>
+        <? if (description) { ?>
+          <div class="desc-text"><strong>สรรพคุณ:</strong> <?= description ?></div>
+        <? } ?>
+      </div>
+    </div>
+
+    <? if (warning) { ?>
+      <div class="warning-section">⚠️ <strong>ข้อระวัง:</strong> <?= warning ?></div>
+    <? } ?>
+
+    <div class="footer">
+      <div>วันที่จ่าย: <span id="dispDate"></span></div>
+      <div>จำนวน: <strong><?= amount ?></strong> หน่วย</div>
+    </div>
+  </div>
+
+  <div class="no-print-area">
+    <button class="print-button" onclick="window.print()">🖨️ คลิกเพื่อพิมพ์ฉลากยา</button>
+  </div>
+
+  <script>
+    document.getElementById('dispDate').innerText = new Date().toLocaleDateString('th-TH');
+    window.onload = function() { setTimeout(function() { window.print(); }, 500); };
+  </script>
+</body>
+</html>

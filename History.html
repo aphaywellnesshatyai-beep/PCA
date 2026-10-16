@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <?!= include('Theme') ?>
+  <style>
+    .stat-card{border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center;background:var(--card)}
+    .stat-card h2{margin:4px 0 0;font-weight:700;color:var(--accent)}
+    .stat-card.s1{border-top:4px solid var(--accent)}.stat-card.s2{border-top:4px solid var(--gold)}.stat-card.s3{border-top:4px solid var(--ok)}
+    .table thead th{color:var(--muted);font-size:12.5px;white-space:nowrap}
+    .dbox{background:var(--card2);border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:.9rem;white-space:pre-wrap}
+    .dlabel{font-weight:700;color:var(--accent);font-size:.8rem;margin-bottom:2px}
+    .vit{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+    .vit div{background:var(--card2);border:1px solid var(--line);border-radius:6px;padding:6px;text-align:center;font-size:.8rem}
+  </style>
+</head>
+<body data-page="History">
+  <div class="page card-lux" style="max-width:1080px">
+    <h3 class="header-title">ประวัติการรักษา</h3>
+    <p class="header-sub">ดู แก้ไข ลบ และพิมพ์บันทึกการรักษา ใบรับรองแพทย์ และใบเสร็จ</p>
+
+    <div class="row g-3 mb-4">
+      <div class="col-4"><div class="stat-card s1"><small class="text-muted">ผู้ป่วยทั้งหมด</small><h2 id="statTotalAll">0</h2></div></div>
+      <div class="col-4"><div class="stat-card s2"><small class="text-muted">รอบเดือนนี้</small><h2 id="statMonthCycle">0</h2><small id="cycleText" class="text-muted" style="font-size:10px"></small></div></div>
+      <div class="col-4"><div class="stat-card s3"><small class="text-muted">ผู้ป่วยวันนี้</small><h2 id="statToday">0</h2></div></div>
+    </div>
+
+    <div class="input-group mb-3">
+      <input type="text" id="searchCN" class="form-control" placeholder="ค้นหาด้วยเลข CN (เว้นว่าง = ทั้งหมด)">
+      <button class="btn btn-primary px-4" onclick="loadHistory()">ค้นหา</button>
+      <button class="btn btn-outline-secondary" onclick="document.getElementById('searchCN').value='';loadHistory()">ทั้งหมด</button>
+    </div>
+
+    <div id="loading" class="text-center py-4" style="display:none"><div class="spinner-border"></div></div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead><tr><th>วันที่</th><th>CN</th><th>ชื่อ-นามสกุล</th><th>วินิจฉัย</th><th>หัตถการ</th><th>ผู้ตรวจ</th><th class="text-center">จัดการ</th></tr></thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="modal fade" id="visitModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">รายละเอียดการรักษา</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body" id="modalDetail"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-warning" onclick="editVisit(currentIdx)">แก้ไขบันทึกนี้</button>
+          <button type="button" class="btn btn-outline-primary" onclick="goPose()">Posture Tracking</button>
+          <button type="button" class="btn btn-success" onclick="printVisit()">พิมพ์ (A5 แนวนอน)</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ประวัติการจ่ายยา -->
+  <div class="modal fade" id="medHistoryModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">ประวัติการจ่ายยา</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body p-4">
+          <div class="p-3 mb-3 bg-light rounded border">
+            <div class="row g-2">
+              <div class="col-md-6"><strong>CN:</strong> <span id="medModalCN" class="text-primary">-</span></div>
+              <div class="col-md-6"><strong>ชื่อ-นามสกุล:</strong> <span id="medModalName">-</span></div>
+              <div class="col-12 mt-1" style="color:var(--bad)"><strong>⚠️ แพ้ยา/อาหาร:</strong> <span id="medModalAllergy">-</span></div>
+            </div>
+          </div>
+          <h6 class="fw-bold mb-2">รายการยาที่เคยได้รับ</h6>
+          <div class="table-responsive rounded p-2 border">
+            <table class="table table-sm table-hover align-middle mb-0" style="border-spacing:0">
+              <thead class="table-light"><tr><th>วันที่</th><th>ชื่อยา</th><th class="text-center">จำนวนที่จ่าย</th><th class="text-end">ราคายา (บาท)</th></tr></thead>
+              <tbody id="medHistoryTableBody"><tr><td colspan="4" class="text-center py-3 text-muted">กำลังโหลดข้อมูล...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">ปิด</button></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    var CN_URL = "<?= cn ?>";
+    var allVisitData = [], currentIdx = null;
+
+    function $(id){ return document.getElementById(id); }
+    function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function calcBmi(w, h){ w = parseFloat(w); h = parseFloat(h) / 100; return (w > 0 && h > 0) ? (w / (h * h)).toFixed(1) : '-'; }
+
+    function loadStats(){
+      google.script.run.withSuccessHandler(function(s){
+        if (!s) return;
+        $('statTotalAll').innerText = s.totalAll || 0;
+        $('statMonthCycle').innerText = s.totalMonthCycle || 0;
+        $('statToday').innerText = s.totalToday || 0;
+        $('cycleText').innerText = s.cycleRange ? '(' + s.cycleRange + ')' : '';
+      }).getVisitStats();
+    }
+
+    function loadHistory(){
+      var cn = $('searchCN').value.trim();
+      $('loading').style.display = 'block'; $('historyBody').innerHTML = '';
+      google.script.run.withSuccessHandler(function(data){
+        $('loading').style.display = 'none';
+        allVisitData = Array.isArray(data) ? data : [];
+        if (!allVisitData.length){
+          $('historyBody').innerHTML = '<tr><td colspan="7" class="text-center p-4 text-muted">' + esc(typeof data === 'string' ? data : 'ไม่พบประวัติ') + '</td></tr>';
+          return;
+        }
+        var html = '';
+        allVisitData.forEach(function(r, i){
+          html += '<tr><td style="white-space:nowrap">' + esc(r.date) + '</td><td>' + esc(r.cn) + '</td><td><b>' + esc(r.name) + '</b></td>'
+               + '<td>' + esc(r.dx) + '</td><td>' + esc(r.treatment) + '</td><td>' + esc(r.staff) + '</td>'
+               + '<td class="text-center" style="white-space:nowrap"><div class="btn-group btn-group-sm">'
+               + '<button class="btn btn-outline-primary" onclick="viewDetail(' + i + ')">ดู</button>'
+               + '<button class="btn btn-outline-primary" onclick="editVisit(' + i + ')">แก้ไข</button>'
+               + '<button class="btn btn-outline-secondary" style="color:var(--bad)" onclick="confirmDelete(' + i + ')">ลบ</button>'
+               + '</div></td></tr>';
+        });
+        $('historyBody').innerHTML = html;
+      }).withFailureHandler(function(e){
+        $('loading').style.display = 'none';
+        $('historyBody').innerHTML = '<tr><td colspan="7" class="text-center text-danger p-4">' + esc(e.message || e) + '</td></tr>';
+      }).getVisitHistory(cn);
+    }
+
+        function viewDetail(i){
+      currentIdx = i;
+      var r = allVisitData[i];
+      awSetPatient(r.cn, r.name);
+      var box = function(l, v){ return '<div class="dlabel">' + l + '</div><div class="dbox">' + esc(v || '-') + '</div>'; };
+      
+      var photo = (r.photo && r.photo.length > 100) ? '<img src="' + r.photo + '" class="img-fluid rounded border mb-2" style="max-height:180px">' : '';
+      
+      // ตรวจสอบและดึงภาพมาร์กจุดเจ็บมาแสดง
+      var painMapImgSrc = r.painPoints || r.painMap || '';
+      var painMap = (painMapImgSrc && painMapImgSrc.length > 20) ? '<div class="mt-3 text-center"><div class="dlabel text-danger">📍 ภาพมาร์กจุดเจ็บ/อาการชา</div><img src="' + painMapImgSrc + '" class="img-fluid rounded border shadow-sm" style="max-height:260px"></div>' : '';
+
+      $('modalDetail').innerHTML =
+          '<div class="p-3 mb-3 rounded" style="background:var(--card2);border-left:4px solid var(--gold)">'
+        + '<b>' + esc(r.name) + '</b> <span class="text-muted small">(CN: ' + esc(r.cn) + ') · ' + esc(r.date) + '</span>'
+        + '<div class="small mt-1" style="color:var(--bad)">แพ้ยา/โรคประจำตัว: ' + esc(r.disease) + '</div></div>'
+        + '<div class="vit"><div>W: ' + esc(r.weight) + '</div><div>H: ' + esc(r.height) + '</div><div><b>BMI: ' + calcBmi(r.weight, r.height) + '</b></div><div>BP: ' + esc(r.bp) + '</div>'
+        + '<div>PR: ' + esc(r.pr) + '</div><div>RR: ' + esc(r.rr) + '</div><div>T: ' + esc(r.temp) + '</div><div>Pain: ' + esc(r.prePain) + ' → ' + esc(r.postPain) + '</div></div>'
+        + '<div class="row"><div class="col-md-7">'
+        + box('อาการสำคัญ (CC)', r.cc) + box('ประวัติปัจจุบัน (PI)', r.pi) + box('ประวัติในอดีต (PH)', r.ph) + box('การตรวจร่างกาย (PE)', r.pe)
+        + box('วินิจฉัย (Dx)', r.dx) + box('หัตถการ', r.treatment) + box('คำแนะนำ', r.advice) + box('แผนการรักษา', r.plan)
+        + '</div><div class="col-md-5">'
+        + box('ธาตุเจ้าเรือน / น้ำมันหอมระเหย', r.element) + box('นัดครั้งถัดไป', r.appointment) + box('ผู้ตรวจ', r.staff)
+        + '<div class="text-center mt-2">' + (photo || '<div class="text-muted small p-3 border rounded">ไม่มีรูปยืนยัน</div>') + '</div>'
+        + painMap
+        + '</div></div>'
+        + '<div class="row g-2 mt-3">'
+        + '<div class="col-12"><button class="btn btn-primary w-100" onclick="viewMedHistory()">💊 ดูประวัติการจ่ายยา</button></div>'
+        + '<div class="col-6"><button class="btn btn-outline-primary w-100" onclick="printDoc(\'CertTemplate\')">📜 ใบรับรองแพทย์</button></div>'
+        + '<div class="col-6"><button class="btn btn-outline-dark w-100" onclick="printDoc(\'ReceiptTemplate\')">💰 ใบเสร็จ</button></div>'
+        + '</div>';
+      new bootstrap.Modal($('visitModal')).show();
+    }
+
+    function editVisit(i){ var r = allVisitData[i]; if (!r) return; awSetPatient(r.cn, r.name); awGo('Index', { mode: 'edit', row: r.rowIndex, cn: r.cn }); }
+    function goPose(){ var r = allVisitData[currentIdx]; if (r) awGo('tracking', { cn: r.cn }); }
+
+    function confirmDelete(i){
+      var r = allVisitData[i];
+      if (!confirm('ยืนยันการลบบันทึกวันที่ ' + r.date + ' ของ ' + r.name + ' ?\nการลบไม่สามารถย้อนกลับได้')) return;
+      google.script.run.withSuccessHandler(function(m){ alert(m); loadStats(); loadHistory(); }).deleteVisit(r.rowIndex);
+    }
+
+    /* ---------- ใบรับรองแพทย์ / ใบเสร็จ (เปิดหน้าใหม่) ---------- */
+    function printDoc(page){
+      var row = allVisitData[currentIdx]; if (!row) return;
+      var params = new URLSearchParams({
+        p: page, cn: row.cn || '', name: row.name || '', idCard: row.idCard || '',
+        address: row.address || '', date: row.date || '', dx: row.dx === '-' ? '' : (row.dx || ''),
+        treatment: row.treatment === '-' ? '' : (row.treatment || '')
+      });
+      window.open(AW_BASE + '?' + params.toString(), '_blank');
+    }
+
+    /* ---------- ประวัติการจ่ายยา ---------- */
+    function viewMedHistory(){
+      var row = allVisitData[currentIdx]; if (!row) return;
+      $('medModalCN').innerText = row.cn || '-';
+      $('medModalName').innerText = row.name || '-';
+      $('medModalAllergy').innerText = row.disease || 'ไม่มีข้อมูล';
+      $('medHistoryTableBody').innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">กำลังดึงข้อมูลประวัติยา...</td></tr>';
+      new bootstrap.Modal($('medHistoryModal')).show();
+
+      google.script.run.withSuccessHandler(function(res){
+        var h = '';
+        if (Array.isArray(res) && res.length > 0){
+          res.forEach(function(item){
+            h += '<tr><td>' + esc(item.date || '-') + '</td><td><b>' + esc(item.drugName || '-') + '</b></td>'
+               + '<td class="text-center">' + esc(item.qty || '-') + '</td><td class="text-end">' + esc(item.price || '0.00') + '</td></tr>';
+          });
+        } else {
+          h = '<tr><td colspan="4" class="text-center text-muted py-3">ไม่พบประวัติการจ่ายยา</td></tr>';
+        }
+        $('medHistoryTableBody').innerHTML = h;
+      }).withFailureHandler(function(err){
+        $('medHistoryTableBody').innerHTML = '<tr><td colspan="4" class="text-center text-danger">เกิดข้อผิดพลาด: ' + esc(err.message || err) + '</td></tr>';
+      }).getPrescriptionHistory(row.cn, row.date);
+    }
+         function printVisit(){
+      var r = allVisitData[currentIdx]; if (!r) return;
+      var box = function(l, v){ return '<div class="lb">' + l + '</div><div class="box">' + esc(v || '-') + '</div>'; };
+      
+      // ดึงภาพมาร์กจุดเจ็บมาแสดง (รองรับทั้ง painPoints และ painMap)
+      var painMapSrc = r.painPoints || r.painMap || '';
+      var painMapImg = (painMapSrc && painMapSrc.length > 20) ? '<div style="margin-top:6px;text-align:center;"><div class="lb">📍 ภาพมาร์กจุดเจ็บ/อาการชา</div><img src="' + painMapSrc + '" style="max-height:140px;border:1px solid #ccc;border-radius:4px;"></div>' : '';
+
+      var w = window.open('', '_blank');
+      w.document.write('<html><head><meta charset="UTF-8"><title>บันทึกการรักษา</title><style>'
+        + '@import url("https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap");@page{size:A5 landscape;margin:6mm}'
+        + 'body{font-family:Sarabun,sans-serif;font-size:8.5pt;line-height:1.2;margin:0}'
+        + '.hd{border-bottom:2px solid #1f4d3f;display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:2px;margin-bottom:4px}.hd b{font-size:11pt;color:#1f4d3f}'
+        + 'table{width:100%;border-collapse:collapse;margin:3px 0}td{border:1px solid #999;text-align:center;padding:2px;font-weight:700;font-size:8pt}'
+        + '.grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}'
+        + '.lb{font-weight:700;color:#1f4d3f;margin-top:2px;font-size:8pt}.box{border:1px solid #ddd;border-radius:3px;padding:2px 5px;min-height:10px;background:#fafafa;white-space:pre-wrap;font-size:8pt}'
+        + '.sig{margin-top:8px;display:flex;justify-content:space-between;font-size:8.5pt}</style></head><body>'
+        + '<div class="hd"><div><b>อพัย เวลเนส คลินิกการแพทย์แผนไทย</b><br><span style="font-size:8.5pt;">บันทึกการรักษา</span></div><div>วันที่: ' + esc(r.date) + '</div></div>'
+        + '<div style="display:flex;justify-content:space-between;margin-bottom:3px;"><div><b>ชื่อ:</b> ' + esc(r.name) + ' &nbsp; <b>CN:</b> ' + esc(r.cn) + '</div><div style="color:#b3392f"><b>แพ้ยา/โรค:</b> ' + esc(r.disease) + '</div></div>'
+        + '<table><tr><td>W: ' + esc(r.weight) + ' kg</td><td>H: ' + esc(r.height) + ' cm</td><td>BMI: ' + calcBmi(r.weight, r.height) + '</td><td>BP: ' + esc(r.bp) + '</td>'
+        + '<td>PR: ' + esc(r.pr) + '</td><td>RR: ' + esc(r.rr) + '</td><td>T: ' + esc(r.temp) + ' °C</td><td>Pain: ' + esc(r.prePain) + ' → ' + esc(r.postPain) + '</td></tr></table>'
+        + '<div class="grid"><div>'
+        + box('อาการสำคัญ (CC)', r.cc) + box('ประวัติปัจจุบัน (PI)', r.pi) + box('ประวัติในอดีต (PH)', r.ph) + box('การตรวจร่างกาย (PE)', r.pe)
+        + '</div><div>'
+        + box('วินิจฉัย (Dx)', r.dx) + box('หัตถการ', r.treatment) + box('คำแนะนำ', r.advice) + box('แผนการรักษา / นัด', r.plan + (r.appointment ? ' (นัด: ' + r.appointment + ')' : ''))
+        + painMapImg
+        + '</div></div>'
+        + '<div class="sig"><span>ลงชื่อผู้ป่วย ........................................</span><span>ผู้ตรวจ: ' + esc(r.staff) + '</span></div>'
+        + '<script>window.onload=function(){setTimeout(function(){window.print();window.close();},500)}<\/script></body></html>');
+      w.document.close();
+    }
+
+    $('searchCN').addEventListener('keypress', function(e){ if (e.key === 'Enter') loadHistory(); });
+    window.addEventListener('load', function(){ if (CN_URL) $('searchCN').value = CN_URL; loadStats(); loadHistory(); });
+  </script>
+</body>
+</html>

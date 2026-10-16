@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <?!= include('Theme') ?>
+  <style>
+    .role-admin{background:var(--gold);color:#1d1708}.role-staff{background:var(--card2);color:var(--muted);border:1px solid var(--line)}
+    .link-row{display:grid;grid-template-columns:1fr 2fr 1.4fr auto;gap:8px;margin-bottom:8px}
+    @media(max-width:700px){.link-row{grid-template-columns:1fr}}
+    .test-res{font-size:.8rem;margin-top:4px}
+    .note-box{background:var(--halo);border-radius:8px;padding:10px 14px;font-size:.86rem;line-height:1.6}
+    .hint{font-size:.76rem;color:var(--muted);margin-top:3px}
+
+    .adm-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-top:16px}
+    .adm-tabs button{border:1px solid var(--line);background:var(--card2);color:var(--ink);border-radius:20px;padding:8px 16px;font:600 .88rem 'Sarabun',sans-serif;cursor:pointer}
+    .adm-tabs button:hover{border-color:var(--gold)}
+    .adm-tabs button.on{background:var(--accent);color:var(--on-accent);border-color:transparent}
+    .adm-sec{display:none}.adm-sec.on{display:block}
+    .save-bar{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:18px;padding-top:14px;border-top:1px dashed var(--line)}
+
+    .logo-box{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+    .logo-pv{width:120px;height:120px;border:1px dashed var(--line);border-radius:12px;display:grid;place-items:center;background:#fff;overflow:hidden;color:var(--muted);font-size:.78rem;text-align:center;flex-shrink:0}
+    .logo-pv img{max-width:100%;max-height:100%;object-fit:contain}
+    .doc-pv{background:#fff;color:#000;border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+    .doc-pv .h{display:flex;align-items:center;gap:12px;border-bottom:2px solid var(--accent);padding-bottom:8px}
+    .doc-pv img{width:56px;height:56px;object-fit:contain}
+    .doc-pv b{font-size:1.05rem;color:var(--accent)}
+    .doc-pv small{display:block;color:#555;font-size:.78rem}
+
+    .doc-row{display:grid;grid-template-columns:auto 2fr 1.2fr 1.6fr auto;gap:8px;align-items:center;margin-bottom:8px}
+    @media(max-width:700px){.doc-row{grid-template-columns:1fr}}
+  </style>
+</head>
+<body data-page="Admin">
+<div class="page" style="max-width:1050px">
+
+  <div id="noAccess" class="card-lux text-center" style="display:none">
+    <h4 class="header-title">⛔ เฉพาะผู้ดูแลระบบ</h4>
+    <p class="text-muted">บัญชีของคุณไม่มีสิทธิ์เข้าหน้าตั้งค่า</p>
+  </div>
+
+  <div id="adminApp" style="display:none">
+    <div class="card-lux mb-3">
+      <h3 class="header-title">⚙️ ตั้งค่าระบบ (ผู้ดูแล)</h3>
+      <p class="header-sub mb-0">เลือกหัวข้อที่ต้องการตั้งค่า — ข้อมูลทั้งหมดบันทึกลงชีตที่ผูกกับระบบ และทุกหน้า/เอกสารพิมพ์จะใช้ข้อมูลนี้อัตโนมัติ</p>
+      <div class="adm-tabs" id="admTabs">
+        <button type="button" data-tab="clinic">🏥 ข้อมูลคลินิก</button>
+        <button type="button" data-tab="doctors">👨‍⚕️ แพทย์ผู้ตรวจ</button>
+        <button type="button" data-tab="look">🎨 หน้าตาเว็บ</button>
+        <button type="button" data-tab="users">👤 ผู้ใช้งาน</button>
+        <button type="button" data-tab="files">📁 ไฟล์และลิงก์</button>
+        <button type="button" data-tab="data">🩺 ฐานข้อมูลโรคและเพลง</button>
+        <button type="button" data-tab="sys">ℹ️ ข้อมูลระบบ</button>
+      </div>
+    </div>
+
+    <!-- ===== 🏥 ข้อมูลคลินิก ===== -->
+    <section class="adm-sec card-lux mb-3" id="sec-clinic">
+      <div class="section-title mt-0">🏥 ข้อมูลคลินิก (ใช้ในหัวเว็บ ใบรับรองแพทย์ ใบเสร็จ ฉลากยา และเอกสารพิมพ์ทุกชนิด)</div>
+      <div class="row g-3">
+        <div class="col-lg-7">
+          <div class="row g-2">
+            <div class="col-md-6"><label class="form-label">ชื่อคลินิก (แบบสั้น)</label><input id="bName" class="form-control" maxlength="60" oninput="brandPreview()"><div class="hint">แสดงที่หัวเว็บ หน้าเข้าสู่ระบบ และบรรทัดแรกของใบรับรองแพทย์</div></div>
+            <div class="col-md-6"><label class="form-label">ประเภทคลินิก</label><input id="bType" class="form-control" maxlength="80" oninput="brandPreview()" placeholder="คลินิกการแพทย์แผนไทย"></div>
+            <div class="col-12"><label class="form-label">ชื่อเต็มคลินิก (ตามใบอนุญาต)</label><input id="bFull" class="form-control" maxlength="120" oninput="brandPreview()"></div>
+            <div class="col-12"><label class="form-label">ที่ตั้งคลินิก</label><textarea id="bAddress" class="form-control" rows="2" maxlength="250" oninput="brandPreview()"></textarea></div>
+            <div class="col-md-6"><label class="form-label">เบอร์โทรคลินิก</label><input id="bPhone" class="form-control" maxlength="40" oninput="brandPreview()" placeholder="เช่น 074-123456, 081-2345678"></div>
+            <div class="col-md-6"><label class="form-label">อีเมล / LINE (ไม่บังคับ)</label><input id="bEmail" class="form-control" maxlength="80" oninput="brandPreview()"></div>
+            <div class="col-md-6"><label class="form-label">เลขประจำตัวผู้เสียภาษี</label><input id="bTax" class="form-control" maxlength="30" oninput="brandPreview()" placeholder="เว้นว่าง = ไม่แสดงในใบเสร็จ"></div>
+            <div class="col-md-6"><label class="form-label">เลขที่ใบอนุญาตสถานพยาบาล</label><input id="bLicense" class="form-control" maxlength="40" oninput="brandPreview()"></div>
+            <div class="col-md-6"><label class="form-label">ชื่อผู้รับเงิน (ใบเสร็จ)</label><input id="bReceiver" class="form-control" maxlength="120" oninput="brandPreview()" placeholder="เว้นว่าง = ใช้ชื่อเต็มคลินิก"></div>
+            <div class="col-md-6"><label class="form-label">หมายเหตุท้ายใบเสร็จ (ไม่บังคับ)</label><input id="bNote" class="form-control" maxlength="200" placeholder="เช่น ขอบคุณที่ใช้บริการ"></div>
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <label class="form-label">โลโก้คลินิก</label>
+          <div class="logo-box">
+            <div class="logo-pv" id="logoPv">ไม่มีโลโก้</div>
+            <div class="flex-grow-1" style="min-width:180px">
+              <label for="logoFile" class="btn btn-outline-primary btn-sm w-100 mb-2" style="cursor:pointer">📤 อัปโหลดรูปโลโก้</label>
+              <input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadLogo(event)">
+              <input id="bLogo" class="form-control form-control-sm" placeholder="หรือวางลิงก์รูป / ลิงก์ Google Drive" oninput="brandPreview()">
+              <div class="form-check mt-2"><input class="form-check-input" type="checkbox" id="noLogo" onchange="brandPreview()"><label class="form-check-label small" for="noLogo">ไม่ใช้โลโก้ (แสดงอักษรย่อแทน)</label></div>
+              <div class="test-res" id="logoMsg"></div>
+            </div>
+          </div>
+          <div class="hint mt-2">แนะนำรูปสี่เหลี่ยมจัตุรัส PNG พื้นใส · อัปโหลดแล้วระบบเก็บใน Drive และเปิดแชร์ให้อัตโนมัติ · ถ้าวางลิงก์ Drive เอง ต้องตั้งแชร์เป็น "ทุกคนที่มีลิงก์"</div>
+          <label class="form-label mt-3">ตัวอย่างหัวเอกสาร</label>
+          <div class="doc-pv" id="docPv"></div>
+        </div>
+      </div>
+      <div class="save-bar"><button class="btn btn-lux px-4" onclick="saveBrand(this)">💾 บันทึกข้อมูลคลินิก</button></div>
+    </section>
+
+    <!-- ===== 👨‍⚕️ แพทย์ผู้ตรวจ ===== -->
+    <section class="adm-sec card-lux mb-3" id="sec-doctors">
+      <div class="section-title mt-0">👨‍⚕️ แพทย์ผู้ตรวจ / ผู้ออกใบรับรองแพทย์</div>
+      <p class="small text-muted">รายชื่อนี้จะขึ้นให้เลือกในใบรับรองแพทย์ · ลำดับแรกเป็นค่าเริ่มต้น · ปิดสวิตช์ = ซ่อนจากรายการชั่วคราว · เก็บในชีต "Doctors"</p>
+      <div class="doc-row small text-muted fw-bold d-none d-md-grid"><div>ใช้งาน</div><div>ชื่อ-นามสกุล (รวมคำนำหน้า)</div><div>เลขใบอนุญาตประกอบวิชาชีพ</div><div>วิชาชีพ (พิมพ์ใต้ลายเซ็น)</div><div></div></div>
+      <div id="docRows"></div>
+      <button class="btn btn-outline-primary btn-sm" onclick="addDocRow()">➕ เพิ่มแพทย์</button>
+      <div class="save-bar"><button class="btn btn-lux px-4" onclick="saveDoctors(this)">💾 บันทึกรายชื่อแพทย์</button></div>
+    </section>
+
+    <!-- ===== 🎨 หน้าตาเว็บ ===== -->
+    <section class="adm-sec card-lux mb-3" id="sec-look">
+      <div class="section-title mt-0">🎨 หัวเว็บและหน้าเข้าสู่ระบบ</div>
+      <div class="aw-top mb-3" style="border-radius:8px"><div class="aw-top-in">
+        <div class="aw-crest" id="pvCrest">อ</div><div class="aw-brand"><b id="pvName"></b><small id="pvSub"></small></div>
+      </div></div>
+      <div class="row g-2">
+        <div class="col-md-3"><label class="form-label">อักษรย่อ (ใช้เมื่อไม่มีโลโก้)</label><input id="bCrest" class="form-control" maxlength="3" oninput="brandPreview()"></div>
+        <div class="col-md-9"><label class="form-label">คำอธิบายใต้ชื่อ</label><input id="bSub" class="form-control" maxlength="100" oninput="brandPreview()"></div>
+        <div class="col-12"><label class="form-label">ชื่อแท็บเบราว์เซอร์</label><input id="bTitle" class="form-control" maxlength="100"></div>
+        <div class="col-md-5"><label class="form-label">หัวข้อหน้าเข้าสู่ระบบ</label><input id="bLoginTitle" class="form-control" maxlength="60"></div>
+        <div class="col-md-7"><label class="form-label">ข้อความหน้าเข้าสู่ระบบ</label><input id="bLoginSub" class="form-control" maxlength="160"></div>
+      </div>
+      <div class="small text-muted mt-1">ชื่อคลินิกและโลโก้ แก้ได้ที่แท็บ "🏥 ข้อมูลคลินิก"</div>
+
+      <div class="section-title">🎨 สีของเว็บ <span class="fw-normal small text-muted">(เห็นผลทันที — ยังไม่บันทึกจนกว่าจะกดปุ่ม)</span></div>
+      <div class="d-flex flex-wrap gap-2 mb-3" id="presetBtns"></div>
+      <div class="row g-2">
+        <div class="col-md-4"><label class="form-label">สีหลัก (หัวเว็บ / เมนู / ปุ่ม)</label>
+          <div class="input-group"><input type="color" id="c_primary" class="form-control form-control-color" style="max-width:56px" oninput="onColorPick('primary')"><input id="ch_primary" class="form-control" maxlength="7" oninput="onHexType('primary')"></div></div>
+        <div class="col-md-4"><label class="form-label">สีเน้น (เส้นขอบ / ปุ่มรอง)</label>
+          <div class="input-group"><input type="color" id="c_gold" class="form-control form-control-color" style="max-width:56px" oninput="onColorPick('gold')"><input id="ch_gold" class="form-control" maxlength="7" oninput="onHexType('gold')"></div></div>
+        <div class="col-md-4"><label class="form-label">สีพื้นหลังหน้าเว็บ</label>
+          <div class="input-group"><input type="color" id="c_bg" class="form-control form-control-color" style="max-width:56px" oninput="onColorPick('bg')"><input id="ch_bg" class="form-control" maxlength="7" oninput="onHexType('bg')"></div></div>
+      </div>
+      <div id="colorWarn" class="small mt-2" style="color:var(--bad)"></div>
+
+      <div class="section-title">📱 ชื่อเมนูด้านล่าง</div>
+      <div class="row g-2" id="navFields"></div>
+      <div class="small text-muted mt-2">เว้นว่างช่องไหน ระบบจะใช้ค่าเริ่มต้นของช่องนั้น</div>
+      <div class="save-bar">
+        <button class="btn btn-outline-secondary" onclick="resetBrand()">คืนค่าเริ่มต้นทั้งหมด</button>
+        <button class="btn btn-lux px-4" onclick="saveBrand(this)">💾 บันทึกหน้าตาเว็บ</button>
+      </div>
+    </section>
+
+    <!-- ===== 👤 ผู้ใช้งาน ===== -->
+    <section class="adm-sec card-lux mb-3" id="sec-users">
+      <div class="section-title mt-0">👤 ผู้ใช้งานและรหัสผ่านเข้าสู่ระบบ</div>
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <thead class="table-light"><tr><th>ชื่อผู้ใช้งาน</th><th>ชื่อที่แสดง</th><th>สิทธิ์</th><th>สถานะ</th><th class="text-end">จัดการ</th></tr></thead>
+          <tbody id="userBody"><tr><td colspan="5" class="text-center py-4"><div class="spinner-border"></div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="p-3 rounded" style="background:var(--card2);border:1px solid var(--line)">
+        <div class="fw-bold mb-2" id="userFormTitle" style="color:var(--accent)">➕ เพิ่มผู้ใช้งานใหม่</div>
+        <div class="row g-2">
+          <div class="col-md-3"><label class="form-label">ชื่อผู้ใช้งาน *</label><input id="uName" class="form-control" autocomplete="off"></div>
+          <div class="col-md-3"><label class="form-label">ชื่อที่แสดง</label><input id="uDisplay" class="form-control" placeholder="เช่น พท.สมชาย"></div>
+          <div class="col-md-3"><label class="form-label">รหัสผ่าน</label><input id="uPass" type="password" class="form-control" autocomplete="new-password" placeholder="อย่างน้อย 4 ตัว"></div>
+          <div class="col-6 col-md-2"><label class="form-label">สิทธิ์</label>
+            <select id="uRole" class="form-select"><option value="staff">ผู้ใช้ทั่วไป</option><option value="admin">ผู้ดูแลระบบ</option></select></div>
+          <div class="col-6 col-md-1 d-flex align-items-end"><div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" id="uActive" checked><label class="form-check-label small" for="uActive">ใช้งาน</label></div></div>
+        </div>
+        <div class="d-flex gap-2 justify-content-end mt-3">
+          <button class="btn btn-outline-secondary" onclick="resetUserForm()">ล้างฟอร์ม</button>
+          <button class="btn btn-lux px-4" id="uSaveBtn" onclick="saveUser()">บันทึกผู้ใช้งาน</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 📁 ไฟล์และลิงก์ ===== -->
+    <section class="adm-sec card-lux mb-3" id="sec-files">
+      <div class="section-title mt-0">📁 โฟลเดอร์ Google Drive ที่ใช้เก็บไฟล์</div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">ภาพ Posture Tracking</label>
+          <div class="input-group"><input id="postureFolder" class="form-control" placeholder="https://drive.google.com/drive/folders/...">
+            <button class="btn btn-outline-secondary" onclick="testFolder('postureFolder')">ทดสอบ</button><button class="btn btn-outline-secondary" onclick="openUrl('postureFolder')">เปิด</button></div>
+          <div class="test-res" id="postureFolderRes"></div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">ลายเซ็น / รูปยืนยันการรักษา</label>
+          <div class="input-group"><input id="signatureFolder" class="form-control" placeholder="https://drive.google.com/drive/folders/...">
+            <button class="btn btn-outline-secondary" onclick="testFolder('signatureFolder')">ทดสอบ</button><button class="btn btn-outline-secondary" onclick="openUrl('signatureFolder')">เปิด</button></div>
+          <div class="test-res" id="signatureFolderRes"></div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">PDF ใบเสร็จ</label>
+          <div class="input-group"><input id="receiptFolder" class="form-control" placeholder="https://drive.google.com/drive/folders/...">
+            <button class="btn btn-outline-secondary" onclick="testFolder('receiptFolder')">ทดสอบ</button><button class="btn btn-outline-secondary" onclick="openUrl('receiptFolder')">เปิด</button></div>
+          <div class="test-res" id="receiptFolderRes"></div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">PDF ใบรับรองแพทย์</label>
+          <div class="input-group"><input id="certFolder" class="form-control" placeholder="https://drive.google.com/drive/folders/...">
+            <button class="btn btn-outline-secondary" onclick="testFolder('certFolder')">ทดสอบ</button><button class="btn btn-outline-secondary" onclick="openUrl('certFolder')">เปิด</button></div>
+          <div class="test-res" id="certFolderRes"></div>
+        </div>
+      </div>
+      <div class="small text-muted mt-2">เว้นว่างได้ — ระบบจะสร้างโฟลเดอร์ "AphaiWellness_..." ให้อัตโนมัติ</div>
+
+      <div class="section-title">🔗 ลิงก์อื่น ๆ <span class="fw-normal small text-muted">(แสดงที่ปุ่ม "ลิงก์" มุมขวาบน)</span></div>
+      <div class="link-row small text-muted fw-bold d-none d-md-grid"><div>ชื่อลิงก์</div><div>URL</div><div>หมายเหตุ</div><div></div></div>
+      <div id="linkRows"></div>
+      <button class="btn btn-outline-primary btn-sm" onclick="addLinkRow()">➕ เพิ่มลิงก์</button>
+      <div class="save-bar"><button class="btn btn-lux px-4" id="setSaveBtn" onclick="saveSettings()">💾 บันทึกโฟลเดอร์และลิงก์</button></div>
+    </section>
+
+    <!-- ===== 🩺 ฐานข้อมูลโรค + เพลง ===== -->
+    <section class="adm-sec card-lux mb-3" id="sec-data">
+      <div class="section-title mt-0">🩺 ฐานข้อมูลโรค / วิธีการนวด</div>
+      <label class="form-label">ชีตฐานข้อมูลโรค</label>
+      <div class="input-group"><select id="dxtSheet" class="form-select"></select>
+        <button class="btn btn-outline-secondary" type="button" onclick="openDxtSheet()">เปิดชีต</button></div>
+      <div class="test-res" id="dxtInfo"></div>
+      <div class="small text-muted mt-1">ระบบอ่านหัวคอลัมน์เอง: ชื่อโรคแผนไทย · ชื่อโรคแผนปัจจุบัน · รหัสโรค · คำค้น/ส่วนของร่างกาย · ขั้นที่ 1, 2, 3... · หัตถการเสริม · คำแนะนำ · ลิงก์รูป/วิดีโอ</div>
+
+      <div class="section-title">🎵 เพลงผ่อนคลาย</div>
+      <label class="form-label">1 บรรทัด = 1 เพลง · เขียนแบบ "ชื่อเพลง | ลิงก์" หรือวางลิงก์อย่างเดียวก็ได้</label>
+      <textarea id="musicLinks" class="form-control" rows="4" placeholder="เพลงบรรเลงสปา | https://drive.google.com/file/d/xxxxxxxx/view"></textarea>
+      <div class="test-res" id="musicRes"></div>
+      <div class="save-bar">
+        <button class="btn btn-outline-secondary" type="button" onclick="checkMusic()">🎧 ตรวจสอบลิงก์เพลง</button>
+        <button class="btn btn-lux px-4" type="button" id="dxtSaveBtn" onclick="saveDxt()">💾 บันทึก</button>
+      </div>
+    </section>
+
+    
+    <!-- ===== ℹ️ ข้อมูลระบบ ===== -->
+
+    <section class="adm-sec card-lux mb-3" id="sec-sys">
+
+      <div class="section-title mt-0">ℹ️ ข้อมูลระบบ & สร้าง QR Code ธาตุเจ้าเรือน</div>
+
+      <div class="d-flex flex-wrap gap-2 mb-3">
+
+        <a id="sheetLink" class="btn btn-outline-primary" target="_blank" rel="noopener">📊 เปิดชีตฐานข้อมูล</a>
+
+        <button class="btn btn-outline-secondary" onclick="copyAppUrl()">📋 คัดลอกลิงก์เว็บแอป</button>
+
+        <button class="btn btn-success" onclick="generateElementQR()">📱 สร้าง QR Code หน้าธาตุเจ้าเรือน</button>
+
+      </div>
+
+      
+
+      <!-- ส่วนแสดง QR Code -->
+
+      <div id="qrContainer" class="text-center p-3 mb-3 bg-light rounded border" style="display:none;">
+
+        <h6 class="fw-bold mb-2 text-success">🎯 QR Code สำหรับสแกนเปิดหน้าธาตุเจ้าเรือน</h6>
+
+        <div id="qrcodeBox" class="my-2 d-inline-block p-2 bg-white border rounded"></div>
+
+        <div>
+
+          <a id="downloadQRBtn" class="btn btn-sm btn-outline-primary mt-2" download="Element-QRCode.png">📥 ดาวน์โหลด QR Code</a>
+
+        </div>
+
+      </div>
+      <div class="note-box">
+        <b>ชีตที่ระบบใช้:</b> Setting (ข้อมูลคลินิก/ชื่อเว็บ/สี) · Doctors (แพทย์) · User_DB (ผู้ใช้) · Patient_DB · Visit_Logs · Posture_Tracking_History · Posture_Dx_Rules · Pain_Map · Medicine_DB · Dispensing_Log · Music · Links<br><br>
+        <b>ฐานข้อมูลวินิจฉัยจาก Posture</b> อยู่ในชีต <b>"Posture_Dx_Rules"</b> — 1 แถว = 1 กฎ<br>
+        ตัวอย่าง: มุมมอง <i>ด้านหลัง</i> · ส่วน <i>ส่วนบน</i> · รายการ <i>ไหล่</i> · คำที่ต้องพบ <i>ไหล่ขวาต่ำกว่า</i> · องศาขั้นต่ำ <i>4</i>
+        → <i>บ่าขวาตึง / ลมปลายปัตคาตสัญญาณ 4 หลัง / Office syndrome</i><br><br>
+        <b>ห้องยา</b> อ่านรายการยาจากชีต <b>"Medicine_DB"</b> (คอลัมน์ A ชื่อยา · B วิธีใช้ · C ราคา · D สรรพคุณ · AT คำเตือน) และบันทึกการจ่ายยาลงชีต <b>"Dispensing_Log"</b>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+  var DATA = null, EDITING = null;
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function call(fn, args, ok, fail){
+    var r = google.script.run.withSuccessHandler(ok).withFailureHandler(function(e){
+      var m = e && e.message ? e.message : String(e);
+      alert('❌ ' + m);
+      if (fail) fail(m);
+      if (m.indexOf('เซสชัน') > -1 && confirm('ต้องการเข้าสู่ระบบใหม่ตอนนี้หรือไม่?')) awLogout();
+    });
+    r[fn].apply(r, [awToken()].concat(args || []));
+  }
+
+  /* ---------- แท็บ ---------- */
+  function showTab(t){
+    if (!$('sec-' + t)) t = 'clinic';
+    [].forEach.call(document.querySelectorAll('#admTabs button'), function(b){ b.classList.toggle('on', b.getAttribute('data-tab') === t); });
+    [].forEach.call(document.querySelectorAll('.adm-sec'), function(s){ s.classList.toggle('on', s.id === 'sec-' + t); });
+    awLS('aw_adm_tab', t);
+  }
+
+  function load(){
+    call('adminGetData', [], function(d){
+      DATA = d;
+      renderUsers();
+      $('postureFolder').value = d.postureFolder || '';
+      $('signatureFolder').value = d.signatureFolder || '';
+      $('receiptFolder').value = d.receiptFolder || '';
+      $('certFolder').value = d.certFolder || '';
+      $('linkRows').innerHTML = '';
+      (d.links || []).forEach(addLinkRow);
+      if (!(d.links || []).length) addLinkRow();
+      $('docRows').innerHTML = '';
+      (d.doctors || []).forEach(addDocRow);
+      if (!(d.doctors || []).length) addDocRow();
+      $('sheetLink').href = d.sheetUrl;
+    });
+  }
+
+  /* ---------- ข้อมูลคลินิก / ชื่อเว็บ ---------- */
+  var NAV_KEYS = [['Register','📝 ลงทะเบียน'],['Search','🔍 ค้นหา'],['Index','🩺 บันทึกรักษา'],['Pharmacy','💊 จ่ายยา'],['tracking','📐 สรีระ'],['element','🍃 ธาตุเจ้าเรือน'],['History','📋 ประวัติ'],['Admin','⚙️ ตั้งค่า']];
+  var BF = { name:'bName', clinicType:'bType', clinicFull:'bFull', address:'bAddress', phone:'bPhone', email:'bEmail',
+             taxId:'bTax', licenseNo:'bLicense', receiver:'bReceiver', receiptNote:'bNote', logo:'bLogo',
+             crest:'bCrest', subtitle:'bSub', title:'bTitle', loginTitle:'bLoginTitle', loginSub:'bLoginSub' };
+  function buildNavFields(){
+    $('navFields').innerHTML = NAV_KEYS.map(function(x){
+      return '<div class="col-6 col-md-3"><label class="form-label">' + x[1] + '</label><input id="nav_' + x[0] + '" class="form-control" maxlength="30"></div>';
+    }).join('');
+  }
+  function logoSrcC(v){
+    v = String(v || '').trim();
+    if (!/^https?:\/\//i.test(v)) return '';
+    if (/drive\.google\.com|docs\.google\.com/i.test(v)){ var m = v.match(/[-\w]{25,}/); if (m) return 'https://drive.google.com/thumbnail?id=' + m[0] + '&sz=w400'; }
+    return v;
+  }
+  function brandPreview(){
+    var v = function(id){ return $(id).value.trim(); };
+    var lg = $('noLogo').checked ? '' : logoSrcC(v('bLogo'));
+    $('pvName').innerText = v('bName') || 'ชื่อคลินิก';
+    $('pvSub').innerText = v('bSub');
+    $('pvCrest').className = 'aw-crest' + (lg ? ' has-logo' : '');
+    $('pvCrest').innerHTML = lg ? '<img src="' + esc(lg) + '" alt="">' : esc(v('bCrest') || 'อ');
+    $('logoPv').innerHTML = lg ? '<img src="' + esc(lg) + '" alt="" onerror="this.parentNode.innerHTML=\'เปิดรูปไม่ได้<br>ตรวจสอบการแชร์ไฟล์\'">' : 'ไม่มีโลโก้';
+    var contact = [v('bAddress'), v('bPhone') ? 'โทร ' + v('bPhone') : '', v('bEmail')].filter(Boolean).join(' · ');
+    var ids = [v('bTax') ? 'เลขประจำตัวผู้เสียภาษี ' + v('bTax') : '', v('bLicense') ? 'ใบอนุญาตสถานพยาบาลเลขที่ ' + v('bLicense') : ''].filter(Boolean).join(' · ');
+    $('docPv').innerHTML = '<div class="h">' + (lg ? '<img src="' + esc(lg) + '" alt="">' : '')
+      + '<div><b>' + esc(v('bFull') || v('bName') || 'ชื่อเต็มคลินิก') + '</b><small>' + esc(v('bType')) + '</small>'
+      + (contact ? '<small>' + esc(contact) + '</small>' : '') + (ids ? '<small>' + esc(ids) + '</small>' : '') + '</div></div>'
+      + '<div class="small mt-2 text-end">ผู้รับเงิน: <b>' + esc(v('bReceiver') || v('bFull') || '-') + '</b></div>';
+  }
+  function loadBrand(){
+    google.script.run.withSuccessHandler(function(b){
+      b = b || {};
+      Object.keys(BF).forEach(function(k){ $(BF[k]).value = b[k] || ''; });
+      $('noLogo').checked = !!b.noLogo;
+      NAV_KEYS.forEach(function(x){ $('nav_' + x[0]).value = (b.nav && b.nav[x[0]]) || ''; });
+      brandPreview(); setColors(b.colors);
+    }).getBranding();
+  }
+  function readBrand(){
+    var o = { nav: {}, colors: readColors(), noLogo: $('noLogo').checked };
+    Object.keys(BF).forEach(function(k){ o[k] = $(BF[k]).value.trim(); });
+    NAV_KEYS.forEach(function(x){ o.nav[x[0]] = $('nav_' + x[0]).value.trim(); });
+    return o;
+  }
+  function refreshBrand(cb){
+    google.script.run.withSuccessHandler(function(nb){ awLS('aw_brand', JSON.stringify(nb)); awBrandApply(nb); if (cb) cb(nb); }).getBranding();
+  }
+  function saveBrand(btn){
+    btn = btn || {}; btn.disabled = true;
+    call('adminSaveBranding', [readBrand()], function(m){ btn.disabled = false; refreshBrand(function(){ alert(m); }); }, function(){ btn.disabled = false; });
+  }
+  function resetBrand(){
+    if (!confirm('คืนชื่อ ข้อความ ข้อมูลคลินิก สี และชื่อเมนูทั้งหมดเป็นค่าเริ่มต้น?')) return;
+    Object.keys(BF).forEach(function(k){ $(BF[k]).value = ''; });
+    $('noLogo').checked = false;
+    NAV_KEYS.forEach(function(x){ $('nav_' + x[0]).value = ''; });
+    setColors(null);
+    saveBrand();
+    setTimeout(loadBrand, 1500);
+  }
+
+  /* ---------- โลโก้ ---------- */
+  function uploadLogo(ev){
+    var f = ev.target.files[0]; ev.target.value = '';
+    if (!f) return;
+    if (!/^image\//.test(f.type)) return alert('กรุณาเลือกไฟล์รูปภาพ');
+    var rd = new FileReader();
+    rd.onload = function(e){
+      var im = new Image();
+      im.onload = function(){
+        var sc = Math.min(1, 400 / Math.max(im.width, im.height)), c = document.createElement('canvas');
+        c.width = Math.round(im.width * sc); c.height = Math.round(im.height * sc);
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        $('logoMsg').innerHTML = '<span class="text-muted">⏳ กำลังอัปโหลด...</span>';
+        call('adminUploadLogo', [c.toDataURL('image/png')], function(r){
+          if (!r || !r.ok){ $('logoMsg').innerHTML = '<span style="color:var(--bad)">✗ ' + esc(r && r.message) + '</span>'; return; }
+          $('bLogo').value = r.url; $('noLogo').checked = false; brandPreview();
+          $('logoMsg').innerHTML = '<span style="color:var(--ok)">✓ อัปโหลดและบันทึกโลโก้แล้ว</span>';
+          refreshBrand();
+        }, function(){ $('logoMsg').innerText = ''; });
+      };
+      im.onerror = function(){ alert('เปิดไฟล์รูปนี้ไม่ได้ (ถ้าเป็น .HEIC ให้แปลงเป็น PNG/JPG ก่อน)'); };
+      im.src = e.target.result;
+    };
+    rd.readAsDataURL(f);
+  }
+
+  /* ---------- แพทย์ ---------- */
+  function addDocRow(d){
+    d = d || { active: true, title: 'ผู้ประกอบวิชาชีพเวชกรรมไทย' };
+    var div = document.createElement('div'); div.className = 'doc-row';
+    div.innerHTML = '<div class="form-check form-switch m-0"><input class="form-check-input d-act" type="checkbox"' + (d.active !== false ? ' checked' : '') + ' title="ใช้งาน"></div>'
+      + '<input class="form-control d-name" placeholder="ชื่อ-นามสกุล (รวมคำนำหน้า)" value="' + esc(d.name || '') + '">'
+      + '<input class="form-control d-lic" placeholder="เช่น พท.ว.12345" value="' + esc(d.license || '') + '">'
+      + '<input class="form-control d-title" placeholder="วิชาชีพ" value="' + esc(d.title || '') + '">'
+      + '<button class="btn btn-outline-secondary" style="color:var(--bad)" title="ลบ">✕</button>';
+    div.querySelector('button').onclick = function(){ div.remove(); };
+    $('docRows').appendChild(div);
+  }
+  function saveDoctors(btn){
+    var list = [];
+    [].forEach.call(document.querySelectorAll('#docRows .doc-row'), function(r){
+      var o = { active: r.querySelector('.d-act').checked, name: r.querySelector('.d-name').value.trim(),
+                license: r.querySelector('.d-lic').value.trim(), title: r.querySelector('.d-title').value.trim() };
+      if (o.name) list.push(o);
+    });
+    if (!list.length && !confirm('ยังไม่มีรายชื่อแพทย์ ต้องการบันทึกเป็นรายการว่างหรือไม่?')) return;
+    btn.disabled = true;
+    call('adminSaveDoctors', [list], function(m){ btn.disabled = false; alert(m); refreshBrand(); load(); }, function(){ btn.disabled = false; });
+  }
+
+  /* ---------- สีของเว็บ ---------- */
+  var DEFAULT_COLORS = { primary: '#1f4d3f', gold: '#b08d3c', bg: '#f4f2ed' };
+  var PRESETS = [['เขียว-ทอง (ค่าเริ่มต้น)','#1f4d3f','#b08d3c','#f4f2ed'], ['น้ำเงินกรม-ทอง','#1b3a6b','#c49b3a','#f2f4f8'],
+                 ['ม่วงเข้ม-ทอง','#4a2c6d','#c49b3a','#f6f3f8'], ['แดงเลือดหมู-ทอง','#7a1f2b','#c49b3a','#f8f3f2'],
+                 ['น้ำตาลเข้ม-ส้ม','#5c4033','#d98c3a','#f6f2ee'], ['เทาถ่าน-ฟ้า','#2f3b45','#3a8fc4','#f1f3f5']];
+  function buildPresets(){
+    $('presetBtns').innerHTML = PRESETS.map(function(p, i){
+      return '<button type="button" class="btn btn-outline-secondary btn-sm" onclick="applyPreset(' + i + ')">'
+           + '<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:' + p[1] + ';border:2px solid ' + p[2] + ';vertical-align:middle;margin-right:5px"></span>' + p[0] + '</button>';
+    }).join('');
+  }
+  function validHex(v){ return /^#[0-9a-f]{6}$/i.test(v || ''); }
+  function setColors(c){
+    c = c || {};
+    ['primary','gold','bg'].forEach(function(k){
+      var v = validHex(c[k]) ? c[k] : DEFAULT_COLORS[k];
+      $('c_' + k).value = v; $('ch_' + k).value = v;
+    });
+    previewColors();
+  }
+  function readColors(){ var o = {}; ['primary','gold','bg'].forEach(function(k){ o[k] = $('c_' + k).value; }); return o; }
+  function previewColors(){
+    var c = readColors(); awColorApply(c);
+    var p = c.primary, lum = (0.299*parseInt(p.substr(1,2),16) + 0.587*parseInt(p.substr(3,2),16) + 0.114*parseInt(p.substr(5,2),16)) / 255;
+    $('colorWarn').innerText = lum > 0.62 ? '⚠️ สีหลักอ่อนเกินไป เมนูด้านล่างอาจอ่านยาก แนะนำเลือกสีเข้มกว่านี้' : '';
+  }
+  function onColorPick(k){ $('ch_' + k).value = $('c_' + k).value; previewColors(); }
+  function onHexType(k){
+    var v = $('ch_' + k).value.trim(); if (v.charAt(0) !== '#') v = '#' + v;
+    if (validHex(v)){ $('c_' + k).value = v.toLowerCase(); previewColors(); }
+  }
+  function applyPreset(i){ var p = PRESETS[i]; setColors({ primary: p[1], gold: p[2], bg: p[3] }); }
+
+  /* ---------- ผู้ใช้งาน ---------- */
+  function renderUsers(){
+    var me = awLS('currentUser'), h = '';
+    (DATA.users || []).forEach(function(u, i){
+      h += '<tr><td><b>' + esc(u.username) + '</b>' + (u.username === me ? ' <span class="small text-muted">(คุณ)</span>' : '') + '</td>'
+         + '<td>' + esc(u.displayName || '-') + '</td>'
+         + '<td><span class="badge ' + (u.role === 'admin' ? 'role-admin' : 'role-staff') + '">' + (u.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้ทั่วไป') + '</span></td>'
+         + '<td>' + (u.active ? '<span style="color:var(--ok)">● ใช้งาน</span>' : '<span class="text-muted">○ ปิดใช้งาน</span>') + '</td>'
+         + '<td class="text-end" style="white-space:nowrap"><button class="btn btn-sm btn-outline-primary" onclick="editUser(' + i + ')">แก้ไข</button> '
+         + (u.username === me ? '' : '<button class="btn btn-sm btn-outline-secondary" style="color:var(--bad)" onclick="delUser(' + i + ')">ลบ</button>') + '</td></tr>';
+    });
+    $('userBody').innerHTML = h || '<tr><td colspan="5" class="text-center text-muted py-4">ยังไม่มีผู้ใช้งาน</td></tr>';
+  }
+  function resetUserForm(){
+    EDITING = null;
+    $('userFormTitle').innerText = '➕ เพิ่มผู้ใช้งานใหม่';
+    $('uName').value = ''; $('uName').readOnly = false;
+    $('uDisplay').value = ''; $('uPass').value = ''; $('uPass').placeholder = 'อย่างน้อย 4 ตัว';
+    $('uRole').value = 'staff'; $('uActive').checked = true;
+  }
+  function editUser(i){
+    var u = DATA.users[i]; if (!u) return;
+    EDITING = u.username;
+    $('userFormTitle').innerText = '✏️ แก้ไขผู้ใช้งาน: ' + u.username;
+    $('uName').value = u.username; $('uName').readOnly = true;
+    $('uDisplay').value = u.displayName || ''; $('uPass').value = ''; $('uPass').placeholder = 'เว้นว่าง = ใช้รหัสเดิม';
+    $('uRole').value = u.role; $('uActive').checked = u.active;
+    $('uName').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  function saveUser(){
+    var u = { username: $('uName').value.trim(), displayName: $('uDisplay').value.trim(), password: $('uPass').value,
+              role: $('uRole').value, active: $('uActive').checked, isNew: !EDITING };
+    if (!u.username) return alert('กรุณาระบุชื่อผู้ใช้งาน');
+    if (!EDITING && !u.password) return alert('กรุณาตั้งรหัสผ่านสำหรับผู้ใช้ใหม่');
+    var b = $('uSaveBtn'); b.disabled = true;
+    call('adminSaveUser', [u], function(m){ b.disabled = false; alert(m); if (String(m).indexOf('✅') > -1){ resetUserForm(); load(); } }, function(){ b.disabled = false; });
+  }
+  function delUser(i){
+    var u = DATA.users[i]; if (!u) return;
+    if (!confirm('ลบผู้ใช้งาน "' + u.username + '" ?')) return;
+    call('adminDeleteUser', [u.username], function(m){ alert(m); load(); });
+  }
+
+  /* ---------- Drive / ลิงก์ ---------- */
+  function testFolder(id){
+    var v = $(id).value.trim(), res = $(id + 'Res');
+    if (!v){ res.innerHTML = '<span class="text-muted">ว่าง — ระบบจะใช้โฟลเดอร์อัตโนมัติ</span>'; return; }
+    res.innerHTML = '<span class="text-muted">กำลังตรวจสอบ...</span>';
+    call('adminTestFolder', [v], function(r){
+      res.innerHTML = r.ok ? '<span style="color:var(--ok)">✓ เชื่อมต่อได้: ' + esc(r.name) + '</span>' : '<span style="color:var(--bad)">✗ ' + esc(r.message) + '</span>';
+    });
+  }
+  function openUrl(id){ var v = $(id).value.trim(); if (/^https?:\/\//i.test(v)) window.open(v, '_blank'); else alert('ยังไม่ได้ใส่ลิงก์'); }
+  function addLinkRow(l){
+    l = l || {};
+    var div = document.createElement('div'); div.className = 'link-row';
+    div.innerHTML = '<input class="form-control l-name" placeholder="ชื่อลิงก์" value="' + esc(l.name || '') + '">'
+      + '<input class="form-control l-url" placeholder="https://..." value="' + esc(l.url || '') + '">'
+      + '<input class="form-control l-note" placeholder="หมายเหตุ" value="' + esc(l.note || '') + '">'
+      + '<button class="btn btn-outline-secondary" style="color:var(--bad)" title="ลบ">✕</button>';
+    div.querySelector('button').onclick = function(){ div.remove(); };
+    $('linkRows').appendChild(div);
+  }
+  function saveSettings(){
+    var links = [];
+    Array.prototype.forEach.call(document.querySelectorAll('#linkRows .link-row'), function(r){
+      var o = { name: r.querySelector('.l-name').value.trim(), url: r.querySelector('.l-url').value.trim(), note: r.querySelector('.l-note').value.trim() };
+      if (o.name || o.url) links.push(o);
+    });
+    var bad = links.filter(function(l){ return !/^https?:\/\//i.test(l.url); });
+    if (bad.length && !confirm('มี ' + bad.length + ' ลิงก์ที่ไม่ได้ขึ้นต้นด้วย http/https จะไม่ถูกบันทึก\nต้องการบันทึกต่อหรือไม่?')) return;
+    var b = $('setSaveBtn'); b.disabled = true;
+    call('adminSaveSettings', [{
+        postureFolder: $('postureFolder').value.trim(), signatureFolder: $('signatureFolder').value.trim(),
+        receiptFolder: $('receiptFolder').value.trim(), certFolder: $('certFolder').value.trim(), links: links }],
+      function(m){ b.disabled = false; alert(m); load(); }, function(){ b.disabled = false; });
+  }
+  function copyAppUrl(){
+    var u = (DATA && DATA.appUrl) || AW_BASE;
+    if (navigator.clipboard) navigator.clipboard.writeText(u).then(function(){ alert('คัดลอกแล้ว:\n' + u); }, function(){ prompt('คัดลอกลิงก์นี้:', u); });
+    else prompt('คัดลอกลิงก์นี้:', u);
+  }
+
+  /* ---------- ฐานข้อมูลโรค / เพลง ---------- */
+  var DXT_S = null;
+  function loadDxtSettings(){
+    call('adminGetDxtSettings', [], function(d){
+      DXT_S = d;
+      var opts = d.sheets.map(function(s){ return '<option value="' + esc(s.name) + '"' + (s.name === d.sheet ? ' selected' : '') + '>' + esc(s.name) + '</option>'; });
+      if (!d.exists) opts.unshift('<option value="' + esc(d.sheet) + '" selected>➕ ' + esc(d.sheet) + ' (สร้างใหม่พร้อมตัวอย่าง)</option>');
+      $('dxtSheet').innerHTML = opts.join('');
+      $('dxtInfo').innerText = d.info || 'ยังไม่มีชีตนี้ — ระบบจะสร้างให้เมื่อกดบันทึก';
+      $('musicLinks').value = d.music || '';
+    });
+  }
+  function openDxtSheet(){
+    var n = $('dxtSheet').value, s = (DXT_S && DXT_S.sheets || []).filter(function(x){ return x.name === n; })[0];
+    if (!s) return alert('ชีตนี้ยังไม่ได้สร้าง — กดบันทึกก่อน');
+    window.open(DXT_S.sheetUrl + '#gid=' + s.gid, '_blank');
+  }
+  function checkMusic(){
+    $('musicRes').innerHTML = '<span class="text-muted">กำลังตรวจสอบ...</span>';
+    call('adminCheckMusic', [$('musicLinks').value], function(arr){
+      $('musicRes').innerHTML = arr.length ? arr.map(function(x, i){
+        return '<div style="color:' + (x.ok ? 'var(--ok)' : 'var(--bad)') + '">' + (x.ok ? '✓' : '✗') + ' เพลงที่ ' + (i + 1) + ': ' + esc(x.msg) + '</div>';
+      }).join('') : '<span class="text-muted">ยังไม่มีลิงก์เพลง</span>';
+    });
+  }
+
+    /* ---------- สร้าง QR Code ธาตุเจ้าเรือน ---------- */
+  function generateElementQR(){
+    var baseUrl = (DATA && DATA.appUrl) || AW_BASE || window.location.href.split('?')[0];
+    // 🌟 เปลี่ยนจาก ?p=element เป็น ?p=publicelement เพื่อให้เปิดได้ทันทีโดยไม่ต้องล็อกอิน
+    var targetUrl = baseUrl.split('?')[0] + '?p=publicelement';
+    
+    var box = $('qrcodeBox');
+    box.innerHTML = '';
+    
+    var qrImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(targetUrl);
+    
+    var img = document.createElement('img');
+    img.src = qrImageUrl;
+    img.alt = 'QR Code Public Element';
+    img.width = 180;
+    img.height = 180;
+    box.appendChild(img);
+    
+    var dlBtn = $('downloadQRBtn');
+    if (dlBtn) {
+      dlBtn.href = qrImageUrl;
+      dlBtn.target = '_blank';
+    }
+    
+    var container = $('qrContainer');
+    if (container) {
+      container.style.display = 'block';
+      container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+  function saveDxt(){
+    var b = $('dxtSaveBtn'); b.disabled = true;
+    call('adminSaveDxtSettings', [{ sheet: $('dxtSheet').value, music: $('musicLinks').value }],
+      function(m){ b.disabled = false; alert(m); loadDxtSettings(); }, function(){ b.disabled = false; });
+  }
+
+  window.addEventListener('load', function(){
+    if (!awIsAdmin()){ $('noAccess').style.display = 'block'; return; }
+    $('adminApp').style.display = 'block';
+    [].forEach.call(document.querySelectorAll('#admTabs button'), function(b){ b.onclick = function(){ showTab(b.getAttribute('data-tab')); }; });
+    showTab(awLS('aw_adm_tab') || 'clinic');
+    buildNavFields(); buildPresets(); loadBrand();
+    load(); loadDxtSettings();
+  });
+</script>
+</body>
+</html>

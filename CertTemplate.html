@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>ใบรับรองแพทย์ - <?= brand.clinicFull ?></title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <style>
+    /* ระยะขอบกำหนดด้วย padding ของ .page จึงไม่ขึ้นกับค่า Margins ในหน้าต่างพิมพ์ */
+    @page { size: A4; margin: 0; }
+
+    body { font-family: 'Sarabun', sans-serif; padding: 10px; color: #000; line-height: 1.6; font-size: 16px; }
+    .page { max-width: 800px; margin: auto; padding: 40px; border: 1px solid #eee; background: #fff; min-height: 1000px; position: relative; }
+    .header { text-align: center; margin-top: 78px; margin-bottom: 25px; }
+    .header.has-logo { margin-top: 20px; }
+    .logo { height: 70px; max-width: 180px; object-fit: contain; display: block; margin: 0 auto 6px; }
+    .clinic-name { font-size: 24px; font-weight: bold; margin-bottom: 2px; }
+    .clinic-sub { font-size: 18px; font-weight: bold; margin-bottom: 2px; }
+    .clinic-contact { font-size: 13px; color: #444; margin-bottom: 8px; }
+    .title { font-size: 22px; font-weight: bold; text-decoration: underline; margin-top: 10px; }
+
+    .section-title { font-weight: bold; text-decoration: underline; margin: 25px 0 15px 0; font-size: 18px; }
+    .row { display: flex; align-items: flex-end; margin-bottom: 10px; width: 100%; flex-wrap: wrap; }
+    .history-row { display: grid; grid-template-columns: 180px 160px 1fr; align-items: flex-end; margin-bottom: 12px; width: 100%; }
+    .label-fix { min-width: fit-content; white-space: nowrap; font-weight: bold; }
+    .dotted-line { border-bottom: 1px dotted #000; flex-grow: 1; margin-left: 8px; font-weight: bold; color: #003366; min-height: 24px; padding-left: 5px; display: flex; align-items: flex-end; }
+    .input-fill { border: none; background: transparent; width: 100%; font-family: 'Sarabun'; font-size: 16px; padding: 0 5px; outline: none; color: #003366; font-weight: bold; }
+    .chk-group { display: flex; gap: 15px; padding-bottom: 2px; }
+    .chk-box { width: 18px; height: 18px; cursor: pointer; accent-color: #000; vertical-align: middle; margin-right: 5px; }
+    .footer-sign { margin-top: 30px; margin-left: auto; width: 350px; text-align: center; line-height: 2; }
+    .doctor-select { border: none; border-bottom: 1px dotted #000; font-family: 'Sarabun'; font-size: 16px; font-weight: bold; color: #003366; background: transparent; cursor: pointer; outline: none; }
+
+    @media print {
+      .no-print { display: none; }
+      .page { border: none; padding: 15mm 15mm 10mm 15mm; min-height: 0; max-width: 100%; box-sizing: border-box; }
+      body { padding: 0; margin: 0; font-size: 14.5px; line-height: 1.5; }
+      .header { margin-top: 60px; }
+      .header.has-logo { margin-top: 10px; }
+      .doctor-select { -webkit-appearance: none; appearance: none; }
+      .input-fill::placeholder { color: transparent; }
+    }
+  </style>
+</head>
+<body>
+  <? var docs = brand.doctors || []; var d0 = docs[0] || { name: '', license: '', title: 'ผู้ประกอบวิชาชีพเวชกรรมไทย' }; ?>
+  <div class="no-print" style="text-align:center; margin-bottom: 20px;">
+    <button onclick="printAndSaveMedCertPDF()" style="padding: 12px 30px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-family: 'Sarabun'; font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+      🖨️ พิมพ์ใบรับรองแพทย์ และบันทึกลง Drive
+    </button>
+    <? if (!docs.length) { ?><div style="color:#b3392f;margin-top:8px">⚠️ ยังไม่มีรายชื่อแพทย์ — แอดมินเพิ่มได้ที่หน้า "ตั้งค่า > แพทย์ผู้ตรวจ"</div><? } ?>
+  </div>
+
+  <div class="page" id="medCertPage">
+    <div class="header<?= logo ? ' has-logo' : '' ?>">
+      <? if (logo) { ?><img class="logo" src="<?= logo ?>" alt=""><? } ?>
+      <div class="clinic-name"><?= brand.name ?></div>
+      <div class="clinic-sub"><?= brand.clinicType ?></div>
+      <? if (brand.phone) { ?><div class="clinic-contact">โทร <?= brand.phone ?></div><? } ?>
+      <div class="title">ใบรับรองแพทย์</div>
+    </div>
+
+    <div class="section-title">ส่วนที่ 1 ของผู้ขอรับรองใบสุขภาพ</div>
+
+    <div class="row">
+      <span class="label-fix">ข้าพเจ้า</span>
+      <select class="doctor-select" id="prefixSelect" style="width: 85px; margin-left: 5px;">
+        <option value="นาย">นาย</option>
+        <option value="นาง">นาง</option>
+        <option value="นางสาว">นางสาว</option>
+        <option value="เด็กชาย">เด็กชาย</option>
+        <option value="เด็กหญิง">เด็กหญิง</option>
+      </select>
+      <div class="dotted-line" id="patientNameDisplay"></div>
+    </div>
+
+    <div class="row">
+      <span class="label-fix">สถานที่อยู่</span>
+      <div class="dotted-line"><?= address || 'ที่นี่' ?></div>
+    </div>
+
+    <div style="margin-top:15px; margin-bottom:10px; font-weight: bold;">ข้าพเจ้าขอรับรองสุขภาพโดยมีประวัติสุขภาพดังนี้</div>
+
+    <div class="history-row">
+      <span class="label-fix">1. โรคประจำตัว</span>
+      <div class="chk-group"><label><input type="checkbox" class="chk-box"> ไม่มี</label><label><input type="checkbox" class="chk-box"> มี (ระบุ)</label></div>
+      <div class="dotted-line"><input type="text" class="input-fill"></div>
+    </div>
+    <div class="history-row">
+      <span class="label-fix">2. อุบัติเหตุและผ่าตัด</span>
+      <div class="chk-group"><label><input type="checkbox" class="chk-box"> ไม่มี</label><label><input type="checkbox" class="chk-box"> มี (ระบุ)</label></div>
+      <div class="dotted-line"><input type="text" class="input-fill"></div>
+    </div>
+    <div class="history-row">
+      <span class="label-fix">3. ประวัติอื่นที่สำคัญ</span>
+      <div class="chk-group"><label><input type="checkbox" class="chk-box"> ไม่มี</label><label><input type="checkbox" class="chk-box"> มี (ระบุ)</label></div>
+      <div class="dotted-line"><input type="text" class="input-fill"></div>
+    </div>
+
+    <div class="footer-sign">
+      ลงชื่อผู้ขอ ................................................................<br>
+      วันที่ <span id="currentDate1" style="font-weight: bold; color: #003366;"></span>
+    </div>
+
+    <div class="section-title">ส่วนที่ 2 ของแพทย์</div>
+
+    <div class="row">
+      <span class="label-fix">ข้าพเจ้า</span>
+      <? if (docs.length) { ?>
+        <select class="doctor-select" id="docSelect" onchange="updateDocInfo(this.value)" style="width: 200px; margin-left: 5px;">
+          <? for (var i = 0; i < docs.length; i++) { ?><option value="<?= i ?>"><?= docs[i].name ?></option><? } ?>
+        </select>
+      <? } else { ?>
+        <input id="docSelect" class="input-fill" style="width:200px;border-bottom:1px dotted #000;margin-left:5px" placeholder="ชื่อแพทย์"
+               oninput="document.getElementById('docNameLabel').innerText=this.value">
+      <? } ?>
+      <span class="label-fix" style="margin-left:5px;"><span id="docTitleTop"><?= d0.title ?></span>ใบอนุญาตเลขที่</span>
+      <div id="licenseNo" style="border-bottom: 1px dotted #000; flex-grow: 1; text-align: center; font-weight: bold; color: #003366; margin-left: 8px; min-height:24px"><?= d0.license ?></div>
+    </div>
+
+    <div class="row">
+      <span class="label-fix">สถานพยาบาล</span>
+      <div style="border-bottom: 1px dotted #000; min-width: 280px; text-align: center; font-weight: bold; margin-left: 8px;"><?= brand.clinicFull ?></div>
+      <span class="label-fix" style="margin-left:8px;">ใบอนุญาตเลขที่</span>
+      <div style="border-bottom: 1px dotted #000; flex-grow: 1; text-align: center; font-weight: bold; margin-left: 8px; min-height:24px"><?= brand.licenseNo ?></div>
+    </div>
+
+    <div class="row">
+      <span class="label-fix">สถานที่ประกอบวิชาชีพตั้งอยู่เลขที่</span>
+      <div class="dotted-line"><?= brand.address ?></div>
+    </div>
+
+    <div class="row" style="margin-top:15px;">
+      <span class="label-fix">ได้ทำการตรวจผู้ป่วย (CN: <?= cn ?>) มีอาการ/โรค</span>
+      <div class="dotted-line"><?= dx ?></div>
+    </div>
+
+    <div class="row" style="margin-top: 5px;">
+      ซึ่งเป็นผู้มีข้อบ่งชี้ทางการแพทย์ว่า จำเป็นต้องได้รับการบำบัดรักษาโรคหรือฟื้นฟูสมรรถภาพด้วยวิธีทางการแพทย์แผนไทย
+    </div>
+
+    <div class="row">
+      <span class="label-fix">จึงเห็นสมควรให้ได้รับการบำบัดรักษา ตั้งแต่วันที่</span>
+      <div id="cleanDate" style="border-bottom: 1px dotted #000; flex-grow: 1; text-align: center; font-weight: bold; color: #003366; margin: 0 8px;"></div>
+      <span class="label-fix">ถึงวันที่</span>
+      <div id="currentDate2" style="border-bottom: 1px dotted #000; flex-grow: 1; text-align: center; font-weight: bold; color: #003366; margin-left: 8px;"></div>
+    </div>
+
+    <div class="footer-sign" style="margin-top:50px;">
+      ลงชื่อ ................................................................<br>
+      ( <span id="docNameLabel" style="font-weight: bold; color: #003366;"><?= d0.name ?></span> )<br>
+      <span id="docTitle"><?= d0.title ?></span>
+    </div>
+  </div>
+
+  <script>
+    var BRAND = <?!= brandJson ?>;
+
+    function initPatientNameAndPrefix(fullName, selectId, textId) {
+      let raw = (fullName || "").trim();
+      let prefix = "นางสาว";
+      let cleanName = raw;
+      const prefixes = ["นางสาว", "เด็กชาย", "เด็กหญิง", "ด.ช.", "ด.ญ.", "นาย", "นาง", "คุณ", "ดร.", "นพ.", "พญ."];
+      for (let p of prefixes) {
+        if (raw.startsWith(p)) { prefix = p; cleanName = raw.substring(p.length).trim(); break; }
+      }
+      if (prefix === "ด.ช.") prefix = "เด็กชาย";
+      if (prefix === "ด.ญ.") prefix = "เด็กหญิง";
+      if (prefix === "นาย" && (cleanName.includes("วิไล") || raw.includes("วิไล"))) prefix = "นางสาว";
+
+      const textEl = document.getElementById(textId);
+      if (textEl) textEl.innerText = cleanName;
+      const selectEl = document.getElementById(selectId);
+      if (selectEl) {
+        for (let i = 0; i < selectEl.options.length; i++) {
+          if (selectEl.options[i].value === prefix || selectEl.options[i].text === prefix) { selectEl.selectedIndex = i; break; }
+        }
+      }
+      return cleanName;
+    }
+
+    function formatThaiDate(dateInput) {
+      if (!dateInput || dateInput.trim() === "") return "-";
+      try {
+        const parts = dateInput.split(' ')[0].split('/');
+        if (parts.length === 3) {
+          const day = parseInt(parts[0]), monthIndex = parseInt(parts[1]) - 1;
+          const year = parseInt(parts[2]) > 2500 ? parseInt(parts[2]) : parseInt(parts[2]) + 543;
+          const monthNames = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+          return day + " " + monthNames[monthIndex] + " " + year;
+        }
+      } catch (e) { console.error(e); }
+      return dateInput;
+    }
+
+    function updateDocInfo(i) {
+      var d = (BRAND.doctors || [])[parseInt(i, 10)];
+      if (!d) return;
+      document.getElementById('licenseNo').innerText = d.license || '';
+      document.getElementById('docNameLabel').innerText = d.name || '';
+      document.getElementById('docTitle').innerText = d.title || '';
+      document.getElementById('docTitleTop').innerText = d.title || '';
+      try { localStorage.setItem('aw_cert_doc', d.name); } catch (e) {}
+    }
+
+    let globalCleanName = "";
+
+    window.onload = function() {
+      globalCleanName = initPatientNameAndPrefix("<?= name ?>", "prefixSelect", "patientNameDisplay");
+      const thaiToday = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+      document.getElementById('currentDate1').innerText = thaiToday;
+      document.getElementById('currentDate2').innerText = thaiToday;
+      document.getElementById('cleanDate').innerText = formatThaiDate("<?= date ?>");
+
+      // เลือกแพทย์คนเดิมที่ใช้ครั้งก่อน
+      var last = null; try { last = localStorage.getItem('aw_cert_doc'); } catch (e) {}
+      var sel = document.getElementById('docSelect');
+      if (last && sel && sel.tagName === 'SELECT') {
+        (BRAND.doctors || []).forEach(function(d, i){ if (d.name === last) { sel.value = String(i); updateDocInfo(i); } });
+      }
+    };
+
+    function printAndSaveMedCertPDF() {
+      window.print();
+      const element = document.getElementById('medCertPage');
+      const filename = "ใบรับรองแพทย์_" + (globalCleanName || "คนไข้") + "_" + (new Date().toISOString().slice(0,10)) + ".pdf";
+      const opt = { margin: 10, filename: filename, image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+
+      html2pdf().set(opt).from(element).outputPdf('datauristring').then(function (pdfBase64) {
+        const base64Data = pdfBase64.split(',')[1];
+        const btn = document.querySelector('.no-print button');
+        const oldText = btn.innerText;
+        btn.innerText = "⏳ กำลังบันทึกลง Drive..."; btn.disabled = true;
+        google.script.run
+          .withSuccessHandler(function(response) { alert(response); btn.innerText = oldText; btn.disabled = false; })
+          .withFailureHandler(function(error) { alert("❌ บันทึกไม่สำเร็จ ระบบแจ้งว่า: " + error.message); btn.innerText = oldText; btn.disabled = false; })
+          .saveMedicalCertificatePDF(base64Data, filename);
+      });
+    }
+  </script>
+</body>
+</html>

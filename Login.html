@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <?!= include('Theme') ?>
+  <style>
+    .lg-wrap{max-width:400px;margin:9vh auto 0}
+    .lg-crest{width:68px;height:68px;border:2px solid var(--gold);border-radius:50%;margin:0 auto 12px;display:grid;place-items:center;color:var(--gold);font-size:1.7rem;font-weight:700}
+    .lg-err{color:var(--bad);font-size:.88rem;min-height:1.3em;margin-top:10px;text-align:center}
+    #btn{touch-action:manipulation}
+  </style>
+</head>
+<body data-page="Login">
+  <div class="page lg-wrap">
+    <div class="card-lux">
+      <div class="lg-crest" data-brand="crest">อ</div>
+      <h3 class="header-title text-center" data-brand="name">อพัย เวลเนส</h3>
+      <div class="text-center fw-bold mb-1" data-brand="loginTitle">เข้าสู่ระบบ</div>
+      <p class="header-sub text-center" data-brand="loginSub">กรุณาเข้าสู่ระบบเพื่อใช้งานระบบเวชระเบียน</p>
+      <label class="form-label">ชื่อผู้ใช้งาน</label>
+      <!-- ปิดตัวพิมพ์ใหญ่อัตโนมัติ/แก้คำอัตโนมัติ: มือถือมักเติมตัวใหญ่หน้าชื่อผู้ใช้ ทำให้ล็อกอินไม่ผ่าน -->
+      <input id="u" class="form-control mb-3" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next">
+      <label class="form-label">รหัสผ่าน</label>
+      <input id="p" type="password" class="form-control" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go">
+      <button id="btn" type="button" class="btn btn-lux w-100 mt-4 py-2" onclick="login()">เข้าสู่ระบบ</button>
+      <div id="err" class="lg-err"></div>
+    </div>
+  </div>
+  <script>
+    function $(id){ return document.getElementById(id); }
+
+    /* หลักการ: ต้องสั่งเปลี่ยนหน้า "ทันทีในจังหวะที่แตะปุ่ม" เท่านั้น
+       (มือถือ/Safari บล็อกการเปลี่ยนหน้าที่สั่งหลังรอเซิร์ฟเวอร์เสร็จ จึงเคยต้องแตะปุ่ม "ไปต่อ" อีกครั้ง)
+       ดังนั้นหน้านี้เก็บชื่อผู้ใช้/รหัสผ่านไว้ชั่วคราว แล้วไปหน้าลงทะเบียนเลย
+       จากนั้นหน้าถัดไปจะตรวจรหัสกับชีตให้ — ถ้าไม่ถูกต้องจะส่งกลับมาหน้านี้พร้อมข้อความแจ้ง */
+    function login(){
+      var u = $('u').value.trim(), p = $('p').value;
+      if (!u || !p){ $('err').innerText = 'กรุณากรอกชื่อผู้ใช้งานและรหัสผ่าน'; return; }
+      if (!awStorageOk()){
+        $('err').innerText = 'เบราว์เซอร์บล็อกการจดจำข้อมูล — ปิดโหมดส่วนตัว (Private) และปิด "ป้องกันการติดตามข้ามเว็บไซต์" ใน ตั้งค่า > Safari แล้วลองใหม่';
+        return;
+      }
+      awLS('aw_loginerr', null);
+      awLS('aw_pending', JSON.stringify({ u: u, p: p }));
+      $('btn').disabled = true; $('btn').innerText = 'กำลังเข้าสู่ระบบ...'; $('err').innerText = '';
+      awGo('Register');
+    }
+
+    document.addEventListener('keypress', function(e){ if (e.key === 'Enter') login(); });
+
+    window.addEventListener('load', function(){
+      awLS('aw_pending', null);                       // กันรหัสค้างจากครั้งก่อน
+      var e = awLS('aw_loginerr');
+      if (e){ $('err').innerText = e; awLS('aw_loginerr', null); }
+      else if (!awStorageOk()) $('err').innerText = '⚠️ เบราว์เซอร์นี้บล็อกการจดจำข้อมูล อาจเข้าสู่ระบบไม่ได้ (ปิดโหมดส่วนตัว / ปิด "ป้องกันการติดตามข้ามเว็บไซต์" ใน ตั้งค่า > Safari)';
+    });
+  </script>
+</body>
+</html>

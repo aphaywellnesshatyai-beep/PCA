@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<base target="_top">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>ระบบวิเคราะห์สรีระ - อพัย เวลเนส</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js" crossorigin="anonymous"></script>
+<?!= include('Theme') ?>
+<style>
+  .step-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px;font-weight:700;font-size:1.02rem;margin-bottom:14px;color:var(--ink)}
+  .step-no{width:28px;height:28px;border-radius:50%;background:var(--grad);color:var(--on-accent);display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex:0 0 auto}
+  .step-sub{font-weight:400;font-size:12px;color:var(--muted)}
+
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{background:var(--card2);border:1px solid var(--line);border-radius:16px;padding:4px 12px;font-size:12.5px}
+  .chip b{color:var(--accent)}
+  .chip-warn{background:rgba(220,53,69,.12);color:#d23b3b;font-weight:700;border-color:rgba(220,53,69,.3)}
+
+  .seg{display:flex;background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:3px;gap:2px;flex-wrap:wrap}
+  .seg button{flex:1 1 auto;min-width:70px;border:0;background:transparent;color:var(--muted);padding:9px 4px;border-radius:11px;font-size:12.5px;font-weight:700;font-family:inherit}
+  .seg button.on{background:var(--card);color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.14)}
+  .setting-title{font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:6px}
+  .hint-text{font-size:12.5px;color:var(--accent);background:var(--halo);border-radius:12px;padding:9px 12px;margin-top:12px;line-height:1.5}
+
+  .toggle-row{display:flex;flex-wrap:wrap;gap:6px 22px;margin-top:14px}
+  .toggle-row .form-check{margin:0}
+  .sen-switch-label{font-weight:700;color:var(--accent)}
+
+  #media-container{position:relative;background:#111;border-radius:20px;overflow:hidden;aspect-ratio:3/4;width:100%;max-width:460px;margin:0 auto;border:1px solid var(--line);display:flex;justify-content:center;align-items:center}
+  video,#uploadedImage{display:none}
+  #uploadedImage{image-orientation:from-image;}
+  .metric-value.metric-weak{color:#e08a00;opacity:.85}
+  .legend-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:middle}
+  canvas#canvas{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;z-index:10}
+  .media-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px}
+  .media-actions .btn{font-weight:700;font-size:13px;flex:1 1 150px}
+
+  .metric-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .metric-box{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:9px 7px;text-align:center}
+  .metric-box.sen{border-color:#b9a3d6;background:linear-gradient(180deg,rgba(224,64,251,.06),var(--card2))}
+  .metric-label{font-size:11px;font-weight:700;color:var(--muted)}
+  .metric-value{font-size:12.5px;font-weight:700;margin-top:3px;line-height:1.35}
+  .metric-ok{color:#2e9e57}.metric-warn{color:#e08a00}.metric-bad{color:#d23b3b}.metric-na{color:var(--muted)}.metric-info{color:#1565c0}
+  .note-small{font-size:11px;color:var(--muted);text-align:center;margin-top:10px;line-height:1.6}
+
+  .status{border-radius:14px;padding:9px 12px;font-size:12.5px;font-weight:700;text-align:center}
+  .s-info{background:var(--halo);color:var(--accent)}
+  .s-warn{background:rgba(224,138,0,.15);color:#c77800}
+  .s-ok{background:rgba(46,158,87,.16);color:#2e9e57}
+  .s-bad{background:rgba(210,59,59,.15);color:#d23b3b}
+
+  .save-box{background:var(--card2);border:1px solid var(--line);border-radius:18px;padding:16px}
+  .shot-chip{display:inline-block;background:rgba(46,158,87,.14);color:#2e9e57;border-radius:12px;padding:3px 11px;font-size:12px;margin:2px 4px 2px 0;font-weight:600}
+
+  .compare-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--card2);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:14px}
+  .sess-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+  .sess-card{border:2px solid var(--line);border-radius:16px;padding:12px;background:var(--card)}
+  .sess-card.selected{border-color:var(--accent2);background:var(--halo)}
+  .sess-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px}
+  .sess-check{display:flex;align-items:center;gap:7px;margin:0;cursor:pointer}
+  .sess-check input{width:19px;height:19px;accent-color:var(--accent)}
+  .sess-title{font-weight:700;font-size:14.5px}
+  .sess-date{font-size:12px;color:var(--muted)}
+  .sess-count{margin-left:auto;font-size:11px;background:var(--grad);color:var(--on-accent);border-radius:10px;padding:2px 10px}
+  .sess-note{font-size:12px;color:var(--accent);background:var(--halo);border-radius:8px;padding:4px 9px;margin-bottom:8px}
+  .thumb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+  .thumb-wrap{position:relative}
+  .thumb{display:block;text-decoration:none;color:var(--ink);border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card2)}
+  .thumb img{width:100%;height:108px;object-fit:cover;display:block;background:var(--bg2)}
+  .thumb-cap{font-size:10px;text-align:center;padding:3px;line-height:1.25;color:var(--muted)}
+  .thumb-del{position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;border:none;background:rgba(210,59,59,.92);color:#fff;font-size:11px;line-height:1;cursor:pointer;z-index:2;display:flex;align-items:center;justify-content:center}
+  .sess-del-btn{font-size:11px;padding:3px 10px;border-radius:12px}
+  details.sess-detail{margin-top:10px;font-size:12px}
+  details.sess-detail summary{cursor:pointer;color:var(--accent);font-weight:700}
+  .detail-block{border-top:1px dashed var(--line);margin-top:8px;padding-top:8px;line-height:1.6}
+
+  #comparePanel{display:none;background:var(--card);border:2px solid var(--accent2);border-radius:20px;padding:16px;margin-bottom:16px}
+  .cmp-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px}
+  .cmp-head .ttl{font-weight:700;font-size:15.5px;flex-grow:1}
+  .cmp-images{display:grid;gap:10px;margin-bottom:14px}
+  .cmp-col{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card);text-align:center}
+  .cmp-title{background:var(--grad);color:var(--on-accent);font-size:12.5px;font-weight:700;padding:7px 5px;line-height:1.3}
+  .cmp-title small{font-weight:400;opacity:.9;display:block}
+  .cmp-col img{width:100%;aspect-ratio:3/4;object-fit:cover;background:var(--bg2);display:block}
+  .cmp-empty{aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;padding:10px}
+  .role-chip{display:inline-block;font-size:10.5px;border-radius:10px;padding:0 8px;margin-left:4px;background:rgba(255,255,255,.25)}
+  .cmp-scroll{overflow-x:auto}
+  .cmp-table{width:100%;font-size:12.5px;border-collapse:collapse;min-width:520px}
+  .cmp-table th,.cmp-table td{border:1px solid var(--line);padding:7px 9px;vertical-align:top}
+  .cmp-table th{background:var(--card2);color:var(--accent)}
+  .chg-good{color:#2e9e57;font-weight:700}.chg-bad{color:#d23b3b;font-weight:700}
+  .chg-same{color:var(--muted)}.chg-info{color:#1565c0;font-weight:700}
+  .cmp-summary{font-size:13px;font-weight:700;background:var(--card2);border-radius:10px;padding:9px 12px;margin-top:10px}
+
+  .pick-list{border:1px solid var(--accent2);border-radius:14px;overflow:hidden;margin-top:10px}
+  .pick-item{padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer;font-size:13px}
+  .pick-item:hover{background:var(--halo)}
+  #debugBox{display:none;font-size:11px;background:rgba(224,138,0,.14);border-radius:12px;padding:8px;margin-top:10px;color:#c77800;word-break:break-all;white-space:pre-wrap}
+
+  body[data-focus="history"] .cap-only{display:none!important}
+  .dx-sug{border:1px solid var(--line);border-left:4px solid var(--bad);border-radius:10px;padding:8px 10px;margin-top:8px;font-size:12.5px;background:var(--card)}
+
+  @media(max-width:575px){
+    .media-actions .btn{flex:1 1 100%}
+    .seg button{min-width:58px;font-size:11px;padding:8px 2px}
+  }
+</style>
+</head>
+<body data-page="tracking" data-shell="<?= embed ? 'none' : 'full' ?>" data-focus="<?= focus ?>">
+<div class="page" style="max-width:1200px">
+  <h3 class="header-title">📐 ตรวจสรีระ (AI Tracking)</h3>
+  <div id="statusMessage" class="status s-info mb-3">ℹ️ เริ่มจากขั้นตอนที่ 1: ค้นหาผู้ป่วยด้วยเลข CN หรือชื่อ-นามสกุล</div>
+
+  <div class="card-lux mb-3">
+    <div class="step-head"><span class="step-no">1</span> ค้นหาผู้ป่วย</div>
+    <div class="row g-2 align-items-center">
+      <div class="col-lg-5">
+        <div class="input-group">
+          <input type="text" id="searchCN" class="form-control" placeholder="ระบุเลข CN หรือ ชื่อ-นามสกุล">
+          <button class="btn btn-primary fw-bold" type="button" id="searchBtn" onclick="searchPatient()">ค้นหา</button>
+        </div>
+      </div>
+      <div class="col-lg-7">
+        <div class="chips" id="patientChips" style="display:none;">
+          <span class="chip"><b>CN</b> <span id="pCN">-</span></span>
+          <span class="chip"><b>ชื่อ</b> <span id="pName">-</span></span>
+          <span class="chip"><b>เพศ</b> <span id="pGender">-</span></span>
+          <span class="chip"><b>นน./สส.</b> <span id="pWH">-</span></span>
+          <span class="chip"><b>โทร</b> <span id="pPhone">-</span></span>
+          <span class="chip chip-warn" id="pAllergyChip">⚠️ <span id="pAllergy">-</span></span>
+        </div>
+      </div>
+    </div>
+    <div id="pickList" class="pick-list" style="display:none;"></div>
+    <div id="debugBox"></div>
+  </div>
+
+  <div id="workspace" style="display:none;">
+    <div class="card-lux mb-3 cap-only">
+      <div class="step-head"><span class="step-no">2</span> ตั้งค่าการถ่าย <span class="step-sub">เลือกมุมมองและส่วนที่ต้องการวิเคราะห์</span></div>
+      <div class="mb-3">
+        <span class="setting-title">🧪 ท่าที่ตรวจ</span>
+        <div class="seg" id="modeGroup">
+          <button type="button" data-mode="symmetry" class="on" onclick="setMode('symmetry')">ยืน/นั่งตรง (เทียบสมดุลซ้าย-ขวา)</button>
+          <button type="button" data-mode="armraise" onclick="setMode('armraise')">🙋 ยกแขนข้างเดียว (ทดสอบช่วงไหล่)</button>
+          <button type="button" data-mode="supine_legs" onclick="setMode('supine_legs')">🛏️ นอนหงาย: แนวขา (เข่าโก่ง/ชิด)</button>
+          <button type="button" data-mode="supine_slr" onclick="setMode('supine_slr')">🦵 นอนหงาย: ยกขา (วัดองศา)</button>
+          <button type="button" data-mode="supine_heel" onclick="setMode('supine_heel')">👣 นอนหงาย: ส้นเท้า (ข้างไหนต่ำกว่า)</button>
+        </div>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <span class="setting-title">📐 มุมมองที่ถ่าย</span>
+          <div class="seg" id="viewGroup">
+            <button type="button" data-view="front" class="on" onclick="setView('front')">🧍 ด้านหน้า</button>
+            <button type="button" data-view="back" onclick="setView('back')">🔙 ด้านหลัง</button>
+            <button type="button" data-view="side" onclick="setView('side')">↔️ ด้านข้าง</button>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <span class="setting-title">🎯 ส่วนที่ต้องการวิเคราะห์</span>
+          <div class="seg" id="regionGroup">
+            <button type="button" data-region="full" class="on" onclick="setRegion('full')">ทั้งตัว</button>
+            <button type="button" data-region="upper" onclick="setRegion('upper')">ส่วนบน</button>
+            <button type="button" data-region="lower" onclick="setRegion('lower')">ส่วนล่าง</button>
+          </div>
+        </div>
+      </div>
+      <div id="sideOptions" style="display:none;" class="row g-2 mt-1">
+        <div class="col-6">
+          <span class="setting-title">ข้างลำตัวที่ใช้วัด</span>
+          <select id="sideSelect" class="form-select form-select-sm" onchange="refreshRender()">
+            <option value="auto">อัตโนมัติ</option>
+            <option value="L">ข้างซ้ายของผู้ป่วย</option>
+            <option value="R">ข้างขวาของผู้ป่วย</option>
+          </select>
+        </div>
+        <div class="col-6">
+          <span class="setting-title">ทิศที่ผู้ป่วยหันหน้า</span>
+          <select id="faceSelect" class="form-select form-select-sm" onchange="refreshRender()">
+            <option value="auto">อัตโนมัติ</option>
+            <option value="R">หันไปทางขวาของภาพ</option>
+            <option value="L">หันไปทางซ้ายของภาพ</option>
+          </select>
+        </div>
+      </div>
+      <div class="toggle-row">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="labelToggle" onchange="toggleLabels()">
+          <label class="form-check-label small" for="labelToggle">แสดงชื่อจุดบนภาพ</label>
+        </div>
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="senToggle" onchange="toggleSen()">
+          <label class="form-check-label small sen-switch-label" for="senToggle">🧘 แสดงเส้นประธาน 10 (ร่วมกับการวัดองศา)</label>
+        </div>
+      </div>
+      <div id="hintText" class="hint-text"></div>
+    </div>
+
+    <div class="row g-3 cap-only">
+      <div class="col-lg-6">
+        <div class="card-lux h-100">
+          <div class="step-head"><span class="step-no">3</span> ถ่ายภาพ / นำเข้าภาพ</div>
+          <div id="media-container">
+            <video id="video" autoplay playsinline muted></video>
+            <img id="uploadedImage" alt="">
+            <canvas id="canvas"></canvas>
+          </div>
+          <div class="media-actions">
+            <label for="imageInput" class="btn btn-primary mb-0" style="cursor:pointer;">📱 ถ่ายรูป / อัปโหลด</label>
+            <input type="file" id="imageInput" accept="image/*" style="display:none;" onchange="handleImageUpload(event)">
+            <button id="cameraBtn" class="btn btn-outline-brown" onclick="toggleCamera()">🎥 เปิดกล้อง (เรียลไทม์)</button>
+            <button id="reAnalyzeBtn" class="btn btn-outline-secondary" style="display:none;" onclick="reAnalyze()">🔄 วิเคราะห์ซ้ำ</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card-lux mb-3">
+          <div class="step-head"><span class="step-no">4</span> ผลการวิเคราะห์</div>
+          <div class="text-center fw-bold mb-2" style="font-size:12.5px;color:var(--accent);" id="metricTitle"></div>
+          <div class="metric-grid mb-2" id="metricGrid"></div>
+          <div id="aiStatus" class="status s-warn">🤖 รอรับภาพเพื่อประมวลผล...</div>
+          <div id="dxSuggest"></div>
+          <div class="note-small">
+            เกณฑ์สีโดยประมาณ: เขียว = ปกติ · ส้ม = เริ่มผิดปกติ · แดง = ควรตรวจซ้ำ<br>
+            จุดบนภาพ: <span class="legend-dot" style="background:#ff5252"></span>จุดที่มั่นใจสูง
+            <span class="legend-dot" style="background:#ffa733;margin-left:8px"></span>จุดที่มั่นใจต่ำ (ลองถ่ายให้เห็นชัดขึ้น)<br>
+            <span id="senLegend" style="display:none"><span class="legend-dot" style="background:#e040fb"></span>จุด/ชื่อสี = เส้นประธาน 10 (จุดรูจมูกและท้องน้อยเป็นตำแหน่งประมาณ)<br></span>
+            มุมคำนวณจากภาพ 2 มิติ ใช้อ้างอิงเบื้องต้นเท่านั้น ไม่ใช่การวินิจฉัยทางการแพทย์
+          </div>
+        </div>
+
+        <div class="card-lux">
+          <div class="step-head"><span class="step-no">5</span> บันทึกผล <span class="step-sub">เลือกว่าจะเก็บเป็นครั้งที่เท่าไร</span></div>
+          <div class="save-box">
+            <div class="row g-2">
+              <div class="col-sm-5">
+                <span class="setting-title">บันทึกเป็น</span>
+                <select id="sessionSelect" class="form-select" onchange="onSessionChange()"></select>
+              </div>
+              <div class="col-sm-7">
+                <span class="setting-title">หมายเหตุครั้งนี้ (ไม่บังคับ)</span>
+                <input type="text" id="sessionNote" class="form-control" placeholder="เช่น ก่อนรักษา / หลังรักษา 1 เดือน">
+              </div>
+            </div>
+            <div class="mt-3">
+              <span class="setting-title">รูปที่บันทึกแล้วในครั้งนี้</span>
+              <div id="shotChips"></div>
+            </div>
+            <button id="saveBtn" class="btn btn-lux w-100 fw-bold py-2 mt-3" onclick="saveTrackingData()" disabled>💾 บันทึก</button>
+            <div id="saveHint" class="note-small">ต้องมีผลวิเคราะห์ในขั้นตอนที่ 4 ก่อนจึงจะบันทึกได้</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-lux mt-3">
+      <div class="step-head"><span class="step-no">6</span> ประวัติสรีระและเปรียบเทียบก่อน-หลัง</div>
+      <div class="compare-bar">
+        <span class="small text-muted flex-grow-1">ติ๊กเลือก 2–4 ครั้งที่ต้องการเปรียบเทียบ แล้วกดปุ่มเปรียบเทียบ</span>
+        <button id="cmpBtn" class="btn btn-primary btn-sm fw-bold" onclick="openCompare()" disabled>📊 เปรียบเทียบ (0)</button>
+        <button id="cmpClear" class="btn btn-outline-secondary btn-sm" onclick="clearCompareSelection()">ล้างที่เลือก</button>
+      </div>
+      <div id="comparePanel"></div>
+      <div id="historyContainer">
+        <p class="text-muted small text-center mt-3">ค้นหาผู้ป่วยเพื่อดูประวัติเก่า</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========================================================= ตัวแปรหลัก ========================================================= */
+var isCameraOpen = false, localStream = null, captureAnimation = null;
+var poseAI = null, aiTimer = null;
+var lastSourceType = null, lastLm = null, currentPayload = null;
+var cnFromUrl = "<?= cn ?>";
+var sessionFromUrl = parseInt("<?= session ?>", 10) || null;
+var FOCUS = "<?= focus ?>";
+var DX_RULES = [];
+
+var currentCN = '', currentPatient = null;
+var historyRecords = [], sessionGroups = [], compareSel = {}, lastCompare = null, saving = false;
+
+var VIEW = 'front', REGION = 'full', SHOW_LABELS = false, SHOW_SEN = false, ANALYSIS_MODE = 'symmetry';
+var VIS_MIN = 0.35, VIS_WEAK = 0.15, TOL = 1.5, MAX_COMPARE = 4;
+
+var VIEW_TXT   = { front:'ด้านหน้า', back:'ด้านหลัง', side:'ด้านข้าง' };
+var REGION_TXT = { full:'ทั้งตัว', upper:'ส่วนบน', lower:'ส่วนล่าง',
+                   sup_legs:'นอนหงาย: แนวขา', sup_slr:'นอนหงาย: ยกขา', sup_heel:'นอนหงาย: ส้นเท้า' };
+var SUPINE     = { supine_legs:'sup_legs', supine_slr:'sup_slr', supine_heel:'sup_heel' };
+var STD_KEYS   = ['head','spine','shoulder','elbow','wrist','hip','knee','ankle'];
+var LABELS_FB  = { head:'ศีรษะ', spine:'แนวสันหลัง', shoulder:'ไหล่', elbow:'ศอก', wrist:'ข้อมือ', hip:'สะโพก', knee:'เข่า', ankle:'ข้อเท้า' };
+var LABELS_SIDE= { head:'ศีรษะยื่นหน้า/หลัง', spine:'ลำตัวโน้มหน้า/หลัง', shoulder:'ไหล่เทียบแนวข้อเท้า', elbow:'มุมงอศอก',
+                   wrist:'แขนอยู่หน้า/หลังลำตัว', hip:'สะโพกเทียบแนวข้อเท้า', knee:'เข่า', ankle:'หน้าแข้งเอียง' };
+
+var videoEl  = document.getElementById('video');
+var imgEl    = document.getElementById('uploadedImage');
+var canvasEl = document.getElementById('canvas');
+var ctx      = canvasEl.getContext('2d');
+
+function setStatus(msg, type){
+  var el = document.getElementById('aiStatus');
+  el.innerText = msg;
+  el.className = "status s-" + (type === 'danger' ? 'bad' : type === 'success' ? 'ok' : type === 'warning' ? 'warn' : 'info');
+}
+function setTopMessage(msg, type){
+  var sm = document.getElementById('statusMessage');
+  sm.innerText = msg;
+  sm.className = "status s-" + (type === 'danger' ? 'bad' : type === 'success' ? 'ok' : type === 'warning' ? 'warn' : 'info') + " mb-3";
+}
+function showDebug(msg){ var d = document.getElementById('debugBox'); d.style.display = 'block'; d.innerText = "🐞 " + msg; }
+function hideDebug(){ document.getElementById('debugBox').style.display = 'none'; }
+function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ========================================================= เรขาคณิต ========================================================= */
+function na(){ return { text:'ไม่พบข้อมูล', level:'na' }; }
+function midPt(a,b){ return (a && b) ? { x:(a.x+b.x)/2, y:(a.y+b.y)/2 } : null; }
+function rad2deg(r){ return r * 180 / Math.PI; }
+function angleAt(a,b,c){
+  var v1 = { x:a.x-b.x, y:a.y-b.y }, v2 = { x:c.x-b.x, y:c.y-b.y };
+  var m = Math.sqrt(v1.x*v1.x+v1.y*v1.y) * Math.sqrt(v2.x*v2.x+v2.y*v2.y);
+  if (!m) return 180;
+  return rad2deg(Math.acos(Math.max(-1, Math.min(1, (v1.x*v2.x+v1.y*v2.y)/m))));
+}
+function assignLR(a,b,view){
+  var aIsImageLeft = a.x < b.x;
+  var aIsSubjectLeft = (view === 'front') ? !aIsImageLeft : aIsImageLeft;
+  return aIsSubjectLeft ? { L:a, R:b } : { L:b, R:a };
+}
+function subjSideOfImageDx(dx, view){
+  var rightOfImage = dx > 0;
+  if (view === 'front') return rightOfImage ? 'ซ้าย' : 'ขวา';
+  return rightOfImage ? 'ขวา' : 'ซ้าย';
+}
+function lvl(deg, t1, t2){ return deg < t1 ? 'ok' : (deg < t2 ? 'warn' : 'bad'); }
+
+function pairFn(idx, nL, nR){
+  return function(c){
+    var a = c.P(idx), b = c.P(idx+1);
+    if (!a || !b) return na();
+    var s = assignLR(a, b, c.view);
+    var dx = Math.abs(s.R.x - s.L.x), dy = s.R.y - s.L.y;
+    var deg = rad2deg(Math.atan2(Math.abs(dy), dx || 0.0001));
+    if (deg < TOL) return { text:'สมดุล (0°)', level:'ok' };
+    var t = (dy > 0 ? nR + 'ต่ำกว่า' + nL : nL + 'ต่ำกว่า' + nR) + ' ' + deg.toFixed(1) + '°';
+    return { text:t, level:lvl(deg,4,8) };
+  };
+}
+function headCenter(c){ var a = c.P(7), b = c.P(8); if (a && b) return midPt(a,b); return c.P(0); }
+function neckFn(c){
+  var hc = headCenter(c), nk = midPt(c.P(11), c.P(12));
+  if (!hc || !nk) return na();
+  var dx = hc.x - nk.x, dy = Math.abs(hc.y - nk.y) || 0.0001;
+  var deg = rad2deg(Math.atan2(Math.abs(dx), dy));
+  if (deg < TOL) return { text:'คอตรง (0°)', level:'ok' };
+  return { text:'ศีรษะ/คอเอียงไปทาง' + subjSideOfImageDx(dx, c.view) + ' ' + deg.toFixed(1) + '°', level:lvl(deg,4,8) };
+}
+function spineFn(c){
+  var ms = midPt(c.P(11), c.P(12)), mh = midPt(c.P(23), c.P(24));
+  if (!ms || !mh) return na();
+  var dx = ms.x - mh.x, dy = Math.abs(ms.y - mh.y) || 0.0001;
+  var deg = rad2deg(Math.atan2(Math.abs(dx), dy));
+  if (deg < TOL) return { text:'แนวตรง (0°)', level:'ok' };
+  return { text:'ลำตัวเอียงไปทาง' + subjSideOfImageDx(dx, c.view) + ' ' + deg.toFixed(1) + '°', level:lvl(deg,3,6) };
+}
+function legFn(which){
+  return function(c){
+    var hA = c.P(23), hB = c.P(24);
+    if (!hA || !hB) return na();
+    var aIsImageLeft = hA.x < hB.x;
+    var aIsSubjLeft = (c.view === 'front') ? !aIsImageLeft : aIsImageLeft;
+    var offLeft = aIsSubjLeft ? 0 : 1;
+    var off = (which === 'L') ? offLeft : 1 - offLeft;
+    var h = c.P(23+off), k = c.P(25+off), a = c.P(27+off);
+    if (!h || !k || !a) return na();
+    var dev = 180 - angleAt(h, k, a);
+    var t = (k.y - h.y) / ((a.y - h.y) || 0.0001);
+    var lineX = h.x + (a.x - h.x) * t;
+    var midX = (hA.x + hB.x) / 2;
+    var medialSign = (midX - lineX) >= 0 ? 1 : -1;
+    var inward = ((k.x - lineX) * medialSign) > 0;
+    if (dev < 3) return { text:'แนวขาตรง (' + dev.toFixed(1) + '°)', level:'ok' };
+    return { text:(inward ? 'เข่าชิดเข้าใน (X) ' : 'เข่าโก่งออกนอก (O) ') + dev.toFixed(1) + '°', level:lvl(dev,5,10) };
+  };
+}
+var FB_METRICS = [
+  { key:'head',     label:'🧠 ศีรษะ (แนวหู)',   short:'ศีรษะ',      reg:['full','upper'], fn:pairFn(7,'หูซ้าย','หูขวา') },
+  { key:'neck',     label:'🦒 คอ/ศีรษะเอียง',    short:'คอ',         reg:['full','upper'], fn:neckFn },
+  { key:'shoulder', label:'💪 ไหล่',             short:'ไหล่',       reg:['full','upper'], fn:pairFn(11,'ไหล่ซ้าย','ไหล่ขวา') },
+  { key:'elbow',    label:'🤜 ศอก',              short:'ศอก',        reg:['full','upper'], fn:pairFn(13,'ศอกซ้าย','ศอกขวา') },
+  { key:'wrist',    label:'✋ ข้อมือ',            short:'ข้อมือ',     reg:['full','upper'], fn:pairFn(15,'ข้อมือซ้าย','ข้อมือขวา') },
+  { key:'spine',    label:'🦴 แนวสันหลัง',       short:'สันหลัง',    reg:['full','upper'], fn:spineFn },
+  { key:'hip',      label:'🦵 สะโพก',            short:'สะโพก',      reg:['full','lower'], fn:pairFn(23,'สะโพกซ้าย','สะโพกขวา') },
+  { key:'knee',     label:'🦿 เข่า',             short:'เข่า',       reg:['full','lower'], fn:pairFn(25,'เข่าซ้าย','เข่าขวา') },
+  { key:'ankle',    label:'🦶 ข้อเท้า',          short:'ข้อเท้า',    reg:['full','lower'], fn:pairFn(27,'ข้อเท้าซ้าย','ข้อเท้าขวา') },
+  { key:'heel',     label:'👣 ส้นเท้า',          short:'ส้นเท้า',    reg:['full','lower'], fn:pairFn(29,'ส้นซ้าย','ส้นขวา') },
+  { key:'legL',     label:'🦵 แนวขาซ้าย',        short:'แนวขาซ้าย',  reg:['full','lower'], fn:legFn('L') },
+  { key:'legR',     label:'🦵 แนวขาขวา',         short:'แนวขาขวา',   reg:['full','lower'], fn:legFn('R') }
+];
+function devVert(top, bot, facing, fwdTxt, backTxt, t1, t2){
+  var dx = top.x - bot.x, dy = Math.abs(top.y - bot.y) || 0.0001;
+  var deg = rad2deg(Math.atan2(Math.abs(dx), dy));
+  if (deg < TOL) return { text:'แนวตรง (0°)', level:'ok', deg:deg };
+  var dirTxt = facing ? ((dx * facing > 0) ? fwdTxt : backTxt) : 'เยื้อง';
+  return { text:dirTxt + ' ' + deg.toFixed(1) + '°', level:lvl(deg,t1,t2), deg:deg };
+}
+function sideHead(c){ var ear=c.S(7), sh=c.S(11); if(!ear||!sh) return na(); return devVert(ear, sh, c.facing, 'ศีรษะยื่นไปหน้า', 'ศีรษะถอยไปหลัง', 8, 15); }
+function sideSpine(c){ var sh=c.S(11), hip=c.S(23); if(!sh||!hip) return na(); return devVert(sh, hip, c.facing, 'ลำตัวโน้มไปหน้า', 'ลำตัวเอนไปหลัง', 3, 6); }
+function sideShoulder(c){ var sh=c.S(11), an=c.S(27); if(!sh||!an) return na(); return devVert(sh, an, c.facing, 'ไหล่เลื่อนไปหน้า', 'ไหล่เลื่อนไปหลัง', 3, 6); }
+function sideElbow(c){
+  var sh=c.S(11), el=c.S(13), wr=c.S(15); if(!sh||!el||!wr) return na();
+  var flex = 180 - angleAt(sh, el, wr);
+  if (flex < 10) return { text:'แขนเหยียดตรง (' + flex.toFixed(0) + '°)', level:'info' };
+  return { text:'ศอกงอ ' + flex.toFixed(0) + '°', level:'info' };
+}
+function sideWrist(c){
+  var wr=c.S(15), sh=c.S(11); if(!wr||!sh) return na();
+  var r = devVert(wr, sh, c.facing, 'แขนอยู่หน้าแนวไหล่', 'แขนอยู่หลังแนวไหล่', 999, 999);
+  r.level = 'info'; return r;
+}
+function sideHip(c){ var hip=c.S(23), an=c.S(27); if(!hip||!an) return na(); return devVert(hip, an, c.facing, 'สะโพกเลื่อนไปหน้า', 'สะโพกเลื่อนไปหลัง', 3, 6); }
+function sideKnee(c){
+  var hip=c.S(23), kn=c.S(25), an=c.S(27); if(!hip||!kn||!an) return na();
+  var dev = 180 - angleAt(hip, kn, an);
+  if (dev < 3) return { text:'เข่าเหยียดตรง (' + dev.toFixed(1) + '°)', level:'ok' };
+  var t = (kn.y - hip.y) / ((an.y - hip.y) || 0.0001);
+  var lineX = hip.x + (an.x - hip.x) * t;
+  var offset = kn.x - lineX;
+  if (!c.facing) return { text:'เข่างอ/แอ่น ' + dev.toFixed(1) + '°', level:'info' };
+  if (offset * c.facing > 0) return { text:'เข่างอ ' + dev.toFixed(1) + '°', level:lvl(dev,10,20) };
+  return { text:'เข่าแอ่นไปหลัง ' + dev.toFixed(1) + '°', level:lvl(dev,5,10) };
+}
+function sideAnkle(c){ var kn=c.S(25), an=c.S(27); if(!kn||!an) return na(); return devVert(kn, an, c.facing, 'หน้าแข้งเอียงไปหน้า', 'หน้าแข้งเอียงไปหลัง', 6, 12); }
+function sidePlumb(c){ var ear=c.S(7), an=c.S(27); if(!ear||!an) return na(); return devVert(ear, an, c.facing, 'ศีรษะเลยแนวข้อเท้าไปหน้า', 'ศีรษะอยู่หลังแนวข้อเท้า', 3, 6); }
+var SIDE_METRICS = [
+  { key:'head',     label:'🧠 ศีรษะยื่นหน้า/หลัง',      short:'ศีรษะ',     reg:['full','upper'], fn:sideHead },
+  { key:'spine',    label:'🦴 ลำตัวโน้มหน้า/หลัง',      short:'ลำตัว',     reg:['full','upper'], fn:sideSpine },
+  { key:'shoulder', label:'💪 ไหล่เทียบแนวข้อเท้า',     short:'ไหล่',      reg:['full','upper'], fn:sideShoulder },
+  { key:'elbow',    label:'🤜 มุมงอศอก',                short:'ศอก',       reg:['full','upper'], fn:sideElbow },
+  { key:'wrist',    label:'✋ แขนอยู่หน้า/หลังลำตัว',    short:'ข้อมือ',    reg:['full','upper'], fn:sideWrist },
+  { key:'hip',      label:'🦵 สะโพกเทียบแนวข้อเท้า',    short:'สะโพก',     reg:['full','lower'], fn:sideHip },
+  { key:'knee',     label:'🦿 เข่า (เหยียด/งอ/แอ่น)',   short:'เข่า',      reg:['full','lower'], fn:sideKnee },
+  { key:'ankle',    label:'🦶 หน้าแข้งเอียง',           short:'ข้อเท้า',   reg:['full','lower'], fn:sideAnkle },
+  { key:'plumb',    label:'📏 แนวดิ่งรวม (หู→ข้อเท้า)', short:'แนวดิ่งรวม', reg:['full'],         fn:sidePlumb }
+];
+function armRaiseSideMap(c){
+  var p11=c.P(11), p12=c.P(12);
+  if (!p11 || !p12) return null;
+  var s = assignLR(p11, p12, c.view);
+  var leftIdx = (s.L === p11) ? 11 : 12;
+  return { L: leftIdx, R: (leftIdx === 11) ? 12 : 11 };
+}
+function angleFromUp(shoulder, elbow){
+  if (!shoulder || !elbow) return null;
+  var v = { x: elbow.x - shoulder.x, y: elbow.y - shoulder.y };
+  var dot = (-1) * v.y;
+  var mag = Math.hypot(v.x, v.y) || 1;
+  return rad2deg(Math.acos(Math.max(-1, Math.min(1, dot / mag))));
+}
+function oneArmRaiseStats(c, shIdx, elIdx, wrIdx){
+  var sh = c.P(shIdx), el = c.P(elIdx), wr = c.P(wrIdx);
+  if (!sh) return null;
+  var elevation = el ? angleFromUp(sh, el) : null;
+  var elbowAngle = (el && wr) ? angleAt(sh, el, wr) : null;
+  var hc = headCenter(c);
+  var wristVsHead = null;
+  if (wr) {
+    if (hc && wr.y < hc.y) wristVsHead = 'มือสูงกว่าศีรษะ';
+    else if (wr.y < sh.y) wristVsHead = 'มือสูงกว่าไหล่ (ต่ำกว่าศีรษะ)';
+    else wristVsHead = 'มือไม่เกินระดับไหล่';
+  }
+  return { elevation: elevation, elbowAngle: elbowAngle, wristVsHead: wristVsHead, wristY: wr ? wr.y : null };
+}
+function fmtArmRaiseStat(stat){
+  if (!stat) return na();
+  var parts = [];
+  if (stat.elevation != null) parts.push('ยกแขน ~' + stat.elevation.toFixed(0) + '°');
+  if (stat.elbowAngle != null) parts.push(stat.elbowAngle > 160 ? 'ศอกเหยียดตรง' : ('ศอกงอ ' + (180 - stat.elbowAngle).toFixed(0) + '°'));
+  if (stat.wristVsHead) parts.push(stat.wristVsHead);
+  if (!parts.length) return na();
+  return { text: parts.join(' · '), level: 'info' };
+}
+function armRaiseAll(c){
+  var map = armRaiseSideMap(c);
+  if (!map) return { raisedSide: na(), leftArm: na(), rightArm: na() };
+  var L = oneArmRaiseStats(c, map.L, map.L + 2, map.L + 4);
+  var R = oneArmRaiseStats(c, map.R, map.R + 2, map.R + 4);
+  var raised = null;
+  if (L && R && L.wristY != null && R.wristY != null) raised = (L.wristY < R.wristY) ? 'ซ้าย' : 'ขวา';
+  else if (L && L.wristY != null) raised = 'ซ้าย';
+  else if (R && R.wristY != null) raised = 'ขวา';
+  return {
+    raisedSide: raised ? { text: raised, level: 'info' } : na(),
+    leftArm: fmtArmRaiseStat(L),
+    rightArm: fmtArmRaiseStat(R)
+  };
+}
+var ARM_RAISE_METRICS = [
+  { key:'raisedSide', label:'🙋 ข้างที่ยกแขนสูงกว่า', short:'ข้างที่ยก', reg:['full','upper','lower'], fn:function(c){ return armRaiseAll(c).raisedSide; } },
+  { key:'leftArm',    label:'⬅️ แขนซ้าย',             short:'แขนซ้าย',   reg:['full','upper','lower'], fn:function(c){ return armRaiseAll(c).leftArm; } },
+  { key:'rightArm',   label:'➡️ แขนขวา',              short:'แขนขวา',    reg:['full','upper','lower'], fn:function(c){ return armRaiseAll(c).rightArm; } }
+];
+
+/* ---------- ท่านอนหงาย ---------- */
+function supGapFn(c){
+  var h1=c.P(23),h2=c.P(24),k1=c.P(25),k2=c.P(26),a1=c.P(27),a2=c.P(28);
+  if(!h1||!h2||!k1||!k2||!a1||!a2) return na();
+  var hw=Math.abs(h1.x-h2.x); if(hw<1) return na();
+  var kg=Math.abs(k1.x-k2.x)/hw, ag=Math.abs(a1.x-a2.x)/hw, d=kg-ag;
+  var base='เข่า '+kg.toFixed(2)+'× · ข้อเท้า '+ag.toFixed(2)+'×';
+  if(Math.abs(d)<0.2) return {text:'สมดุล ('+base+')',level:'ok'};
+  var t=(d>0 ? 'เข่าห่างกว่าข้อเท้า → สัญญาณขาโก่ง (O) ' : 'ข้อเท้าห่างกว่าเข่า → สัญญาณเข่าชิด (X) ')+base;
+  return {text:t,level:(Math.abs(d)<0.4?'warn':'bad')};
+}
+function slrFn(c){
+  var sh=c.S(11),hip=c.S(23),kn=c.S(25),an=c.S(27);
+  if(!sh||!hip||!an) return na();
+  var flex=180-angleAt(sh,hip,an);
+  var kb=kn?(180-angleAt(hip,kn,an)):null;
+  var t=flex.toFixed(0)+'° จากแนวลำตัว';
+  if(kb!==null) t+= kb>10 ? ' · เข่างอ '+kb.toFixed(0)+'° (ค่าอาจคลาดเคลื่อน)' : ' · เข่าเหยียดตรง';
+  return {text:t,level:(flex>=70?'ok':flex>=50?'warn':'bad')};
+}
+function slrSideFn(c){ if(!c.S(23)) return na(); return {text:'ขา'+(c.off===0?'ซ้าย':'ขวา')+'ของผู้ป่วย',level:'info'}; }
+function bodyAxis(c){
+  var hm=midPt(c.P(23),c.P(24)), am=midPt(c.P(27),c.P(28));
+  if(!hm||!am) return null;
+  var dx=am.x-hm.x, dy=am.y-hm.y, len=Math.hypot(dx,dy);
+  return len<1?null:{ux:dx/len,uy:dy/len,len:len};
+}
+function axisPairFn(idx,nL,nR){
+  return function(c){
+    var a=c.P(idx),b=c.P(idx+1),ax=bodyAxis(c);
+    if(!a||!b||!ax) return na();
+    var s=assignLR(a,b,c.view);
+    var pL=s.L.x*ax.ux+s.L.y*ax.uy, pR=s.R.x*ax.ux+s.R.y*ax.uy;
+    var pct=Math.abs(pR-pL)/ax.len*100;
+    if(pct<1.5) return {text:'ระดับเท่ากัน ('+pct.toFixed(1)+'%)',level:'ok'};
+    return {text:(pR>pL?nR:nL)+'อยู่ต่ำกว่า '+pct.toFixed(1)+'% ของความยาวขา',level:lvl(pct,3,6)};
+  };
+}
+var SUPINE_METRICS = {
+  supine_legs: [
+    { key:'legL', label:'🦵 แนวขาซ้าย', short:'แนวขาซ้าย', reg:['sup_legs'], fn:legFn('L') },
+    { key:'legR', label:'🦵 แนวขาขวา',  short:'แนวขาขวา',  reg:['sup_legs'], fn:legFn('R') },
+    { key:'kneeGap', label:'↔️ ช่องว่างเข่า/ข้อเท้า', short:'ช่องว่างเข่า-ข้อเท้า', reg:['sup_legs'], fn:supGapFn },
+    { key:'knee', label:'🦿 เข่า (ซ้าย-ขวา)', short:'เข่า', reg:['sup_legs'], fn:pairFn(25,'เข่าซ้าย','เข่าขวา') }
+  ],
+  supine_slr: [
+    { key:'slrSide', label:'📍 ข้างที่วัด', short:'ข้างที่วัด', reg:['sup_slr'], fn:slrSideFn },
+    { key:'slr', label:'🦵 ยกขา (มุมงอสะโพก)', short:'ยกขา', reg:['sup_slr'], fn:slrFn }
+  ],
+  supine_heel: [
+    { key:'heelAx', label:'👣 ส้นเท้า', short:'ส้นเท้า', reg:['sup_heel'], fn:axisPairFn(29,'ส้นเท้าซ้าย','ส้นเท้าขวา') },
+    { key:'ankleAx', label:'🦶 ข้อเท้า', short:'ข้อเท้า(นอน)', reg:['sup_heel'], fn:axisPairFn(27,'ข้อเท้าซ้าย','ข้อเท้าขวา') },
+    { key:'toeAx', label:'🦶 ปลายเท้า', short:'ปลายเท้า', reg:['sup_heel'], fn:axisPairFn(31,'ปลายเท้าซ้าย','ปลายเท้าขวา') }
+  ]
+};
+
+/* ========================================================= 🧘 เส้นประธาน 10 (ซ้อนบนการวัดองศา) ========================================================= */
+/* ซ้าย/ขวา = ซ้าย/ขวาของ "ผู้ป่วย" */
+var SEN = {
+  1:{n:'อิทา',      d:'จมูกซ้าย',                       c:'#4fc3f7'},
+  2:{n:'ปิงคลา',    d:'จมูกขวา',                        c:'#ffb74d'},
+  3:{n:'สุมนา',     d:'ปาก/ลิ้น',                        c:'#e040fb'},
+  4:{n:'กาลทารี',   d:'เส้นแขน-ขาสองข้าง',               c:'#69f0ae'},
+  5:{n:'สหัสรังสี', d:'ดวงตาซ้าย',                       c:'#fff176'},
+  6:{n:'ทวารี',     d:'ดวงตาขวา',                        c:'#ffd54f'},
+  7:{n:'จันทภูสัง', d:'หลังเท้าซ้าย',                    c:'#ff8a80'},
+  8:{n:'รุทัง',     d:'หลังเท้าขวา',                     c:'#ff5252'},
+  9:{n:'สิกขินี',   d:'ท้องน้อยขวา (กระเพาะปัสสาวะ)',    c:'#80deea'},
+  10:{n:'สุขุมัง',  d:'ท้องน้อยซ้าย (ลำไส้ใหญ่)',        c:'#a5d6a7'}
+};
+function senAllowed(){ return SHOW_SEN && VIEW !== 'side' && ANALYSIS_MODE !== 'supine_slr'; }
+function senUpperOk(){ return REGION === 'full' || REGION === 'upper'; }
+function senLowerOk(){ return REGION === 'full' || REGION === 'lower' || REGION === 'sup_legs' || REGION === 'sup_heel'; }
+function senShowPt(n){
+  if (n === 1 || n === 2 || n === 3 || n === 5 || n === 6) return senUpperOk();
+  if (n === 7 || n === 8) return senLowerOk();
+  return true;
+}
+function senVecN(a, b){ var dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy) || 1; return { x:dx/l, y:dy/l, l:l }; }
+function senAddV(p, v, k){ return { x:p.x + v.x*k, y:p.y + v.y*k }; }
+function senLrIdx(c, i, j){
+  var a = c.P(i), b = c.P(j); if (!a || !b) return null;
+  var s = assignLR(a, b, c.view);
+  return (s.L === a) ? { L:i, R:j } : { L:j, R:i };
+}
+function senGeom(c){
+  var g = { p:{}, approx:{}, lines:[], limbs:0, limbsMax:0, d:0 };
+
+  // ใบหน้า: ตา (5,6) จมูก (1,2) ปาก (3)
+  var ey = senLrIdx(c, 2, 5), eL = ey && c.P(ey.L), eR = ey && c.P(ey.R);
+  var mo = senLrIdx(c, 9, 10), mL = mo && c.P(mo.L), mR = mo && c.P(mo.R);
+  var mm = (mL && mR) ? midPt(mL, mR) : null;
+  if (eL && eR){
+    var eyeMid = midPt(eL, eR), uv = senVecN(eR, eL), d = uv.l, down;
+    if (mm){ var dv = senVecN(eyeMid, mm); down = { x:dv.x, y:dv.y }; }
+    else { down = { x:-uv.y, y:uv.x }; if (down.y < 0){ down.x = -down.x; down.y = -down.y; } }
+    var nose = c.P(0), base = nose || senAddV(eyeMid, down, d*0.6);
+    g.p[5] = eL; g.p[6] = eR;
+    g.p[1] = senAddV(base, uv,  d*0.14); g.p[2] = senAddV(base, uv, -d*0.14);
+    g.approx[1] = g.approx[2] = true;
+    g.p[3] = mm || senAddV(eyeMid, down, d*1.1);
+    if (!mm) g.approx[3] = true;
+    g.d = d; g.eyeMid = eyeMid; g.u = uv; g.mouthMid = mm;
+  } else if (mm){ g.p[3] = mm; }
+
+  // หลังเท้า (7,8): กึ่งกลางข้อเท้า-ปลายเท้า
+  var an = senLrIdx(c, 27, 28);
+  if (an){
+    [['L',7],['R',8]].forEach(function(s){
+      var ai = an[s[0]], a = c.P(ai), t = c.P(ai + 4);
+      if (a && t) g.p[s[1]] = { x:a.x + (t.x - a.x)*0.5, y:a.y + (t.y - a.y)*0.5 };
+    });
+  }
+
+  // ท้องน้อย (9,10)
+  var hp = senLrIdx(c, 23, 24);
+  if (hp){
+    var hL = c.P(hp.L), hR = c.P(hp.R), hm = midPt(hL, hR), hv = senVecN(hR, hL), hipW = hv.l;
+    var sh = senLrIdx(c, 11, 12), sm = null;
+    if (sh){ var sL = c.P(sh.L), sR = c.P(sh.R); if (sL && sR) sm = midPt(sL, sR); }
+    var up, tl;
+    if (sm){ var tv = senVecN(hm, sm); up = { x:tv.x, y:tv.y }; tl = tv.l; }
+    else { up = { x:hv.y, y:-hv.x }; if (up.y > 0){ up.x = -up.x; up.y = -up.y; } tl = hipW*1.7; }
+    var cen = senAddV(hm, up, tl*0.10);
+    g.p[9]  = senAddV(cen, hv, -hipW*0.22);
+    g.p[10] = senAddV(cen, hv,  hipW*0.22);
+    g.approx[9] = g.approx[10] = true; g.hm = hm;
+    if (an){ var a1 = c.P(an.L), a2 = c.P(an.R); if (a1 && a2) g.legLen = Math.hypot(hm.x - (a1.x + a2.x)/2, hm.y - (a1.y + a2.y)/2); }
+  }
+
+  // กาลทารี (4): แขน (ส่วนบน) ขา (ส่วนล่าง)
+  var chains = [];
+  if (senUpperOk()) chains.push([11,13,15,19],[12,14,16,20]);
+  if (senLowerOk()) chains.push([23,25,27,31],[24,26,28,32]);
+  g.limbsMax = chains.length;
+  chains.forEach(function(ch){
+    var pts = ch.map(function(i){ return c.P(i); }), n = 0;
+    for (var k = 0; k < pts.length - 1; k++) if (pts[k] && pts[k+1]){ g.lines.push([pts[k], pts[k+1]]); n++; }
+    if (n) g.limbs++;
+  });
+  return g;
+}
+
+/* ---------- ค่าที่วัดของเส้นประธาน ---------- */
+function senFoundFn(c){
+  var g = senGeom(c), tot = 0, got = 0;
+  [1,2,3,5,6,7,8,9,10].forEach(function(n){ if (senShowPt(n)){ tot++; if (g.p[n]) got++; } });
+  if (!got && !g.limbs) return na();
+  var t = 'พบ ' + got + '/' + tot + ' จุด' + (g.limbsMax ? ' · กาลทารี ' + g.limbs + '/' + g.limbsMax + ' เส้น' : '');
+  return { text:t, level:(got === tot && g.limbs === g.limbsMax) ? 'ok' : 'warn' };
+}
+function senSumana(c){
+  var g = senGeom(c); if (!g.p[3]) return na();
+  if (!g.mouthMid || !g.u || !g.d) return { text:'พบตำแหน่ง (ประมาณ)', level:'info' };
+  var lat = ((g.mouthMid.x - g.eyeMid.x)*g.u.x + (g.mouthMid.y - g.eyeMid.y)*g.u.y) / g.d * 100, a = Math.abs(lat);
+  if (a < 4) return { text:'ปากอยู่แนวกึ่งกลางใบหน้า', level:'ok' };
+  return { text:'ปากเบี่ยงไปทาง' + (lat > 0 ? 'ซ้าย' : 'ขวา') + ' ' + a.toFixed(0) + '% ของระยะห่างดวงตา', level:'info' };
+}
+function senTilt(a, b, nL, nR){
+  var dx = Math.abs(b.x - a.x), dy = b.y - a.y, deg = rad2deg(Math.atan2(Math.abs(dy), dx || 0.0001));
+  if (deg < TOL) return { text:'สมดุล (0°)', level:'ok' };
+  return { text:(dy > 0 ? nR + 'ต่ำกว่า' + nL : nL + 'ต่ำกว่า' + nR) + ' ' + deg.toFixed(1) + '°', level:lvl(deg, 4, 8) };
+}
+function senEyeTilt(c){ var g = senGeom(c); if (!g.p[5] || !g.p[6]) return na(); return senTilt(g.p[5], g.p[6], 'ตาซ้าย', 'ตาขวา'); }
+function senPelvisTilt(c){ var g = senGeom(c); if (!g.p[9] || !g.p[10]) return na(); return senTilt(g.p[10], g.p[9], 'สุขุมัง(ซ้าย)', 'สิกขินี(ขวา)'); }
+function senFootLevel(c){
+  var g = senGeom(c); if (!g.p[7] || !g.p[8]) return na();
+  if (!g.legLen) return { text:'พบทั้งสองจุด (ข้อมูลไม่พอเทียบระดับ)', level:'info' };
+  var dy = g.p[8].y - g.p[7].y, pct = Math.abs(dy) / g.legLen * 100;
+  if (pct < 1.5) return { text:'ระดับเท่ากัน (' + pct.toFixed(1) + '%)', level:'ok' };
+  return { text:(dy > 0 ? 'หลังเท้าขวา(รุทัง)' : 'หลังเท้าซ้าย(จันทภูสัง)') + 'ต่ำกว่า ' + pct.toFixed(1) + '% ของความยาวขา', level:lvl(pct, 3, 6) };
+}
+var SEN_METRICS = [
+  { key:'senFound',  label:'🧘 จุดเส้นประธานที่พบ',              short:'เส้นประธานที่พบ', part:'all',   sen:true, fn:senFoundFn },
+  { key:'senSumana', label:'🧘 3. สุมนา (ปาก/ลิ้น)',             short:'สุมนา',           part:'upper', sen:true, fn:senSumana },
+  { key:'senEye',    label:'🧘 ระดับตา (สหัสรังสี-ทวารี)',        short:'ระดับตา(เส้น5-6)', part:'upper', sen:true, fn:senEyeTilt },
+  { key:'senPelvis', label:'🧘 ระดับท้องน้อย (สิกขินี-สุขุมัง)',   short:'ระดับท้องน้อย(เส้น9-10)', part:'all', sen:true, fn:senPelvisTilt },
+  { key:'senFoot',   label:'🧘 ระดับหลังเท้า (จันทภูสัง-รุทัง)',  short:'ระดับหลังเท้า(เส้น7-8)', part:'lower', sen:true, fn:senFootLevel }
+];
+
+/* ---------- วาดเส้นประธาน ---------- */
+function senLabel(p, txt, dx, dy, len, color){
+  var W = canvasEl.width, fs = Math.round(Math.max(12, W/52)), q = { x:p.x + dx*len, y:p.y + dy*len };
+  drawLine(p, q, color, Math.max(1.5, W/500));
+  ctx.save(); ctx.font = 'bold ' + fs + 'px Sarabun, sans-serif'; ctx.textBaseline = 'middle';
+  ctx.textAlign = dx < -0.2 ? 'right' : (dx > 0.2 ? 'left' : 'center');
+  var tx = q.x + (dx < -0.2 ? -4 : (dx > 0.2 ? 4 : 0)), ty = q.y + (dy > 0.7 ? fs*0.7 : (dy < -0.7 ? -fs*0.7 : 0));
+  ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.strokeText(txt, tx, ty);
+  ctx.fillStyle = color; ctx.fillText(txt, tx, ty); ctx.restore();
+}
+/* ชั้นล่าง: แถบกาลทารี (วาดก่อนโครงร่าง เพื่อไม่ทับเส้นวัดองศา) */
+function drawSenUnder(c, g){
+  var lw = Math.max(3, c.W/170);
+  g.lines.forEach(function(l){ drawLine(l[0], l[1], 'rgba(105,240,174,0.38)', lw*3.4); });
+}
+/* ชั้นบน: จุดและชื่อเส้นประธาน */
+function drawSenOver(c, g){
+  var W = c.W, len = Math.max(26, W/26);
+  var faceCx = g.eyeMid ? g.eyeMid.x : W/2, hipCx = g.hm ? g.hm.x : W/2, ankCx = W/2;
+  if (g.p[7] && g.p[8]) ankCx = (g.p[7].x + g.p[8].x)/2;
+  [1,2,3,5,6,7,8,9,10].forEach(function(n){
+    var p = g.p[n]; if (!p || !senShowPt(n)) return;
+    var face = (n === 1 || n === 2 || n === 3 || n === 5 || n === 6);
+    var r = face ? Math.max(3, Math.min(9, (g.d || 40)*0.07)) : Math.max(5, W/110);
+    drawDot(p, r, SEN[n].c);
+    var cx = face ? faceCx : (n >= 9 ? hipCx : ankCx), sg = (p.x >= cx) ? 1 : -1, dx, dy;
+    if (n === 3){ dx = 0; dy = 1; }
+    else if (n === 5 || n === 6){ dx = sg*0.8; dy = -0.8; }
+    else if (n === 1 || n === 2){ dx = sg*0.9; dy = 0.5; }
+    else if (n === 7 || n === 8){ dx = sg*0.8; dy = 0.5; }
+    else { dx = sg*0.9; dy = 0; }
+    senLabel(p, n + '.' + SEN[n].n, dx, dy, len, SEN[n].c);
+  });
+  if (g.lines.length){
+    var l = g.lines[0], m = { x:(l[0].x + l[1].x)/2, y:(l[0].y + l[1].y)/2 };
+    senLabel(m, '4.' + SEN[4].n, (m.x >= W/2 ? 0.9 : -0.9), 0, len, SEN[4].c);
+  }
+}
+
+/* ========================================================= รายการค่าที่วัด ========================================================= */
+function baseMetrics(){
+  if (SUPINE_METRICS[ANALYSIS_MODE]) return SUPINE_METRICS[ANALYSIS_MODE];
+  if (ANALYSIS_MODE === 'armraise') return ARM_RAISE_METRICS;
+  var src = (VIEW === 'side') ? SIDE_METRICS : FB_METRICS;
+  return src.filter(function(m){ return m.reg.indexOf(REGION) > -1; });
+}
+function activeMetrics(){
+  var list = baseMetrics();
+  if (!senAllowed()) return list;
+  var extra = SEN_METRICS.filter(function(m){
+    if (m.part === 'upper') return senUpperOk();
+    if (m.part === 'lower') return senLowerOk();
+    return true;
+  });
+  return list.concat(extra);
+}
+
+/* ========================================================= ควบคุมมุมมอง/ส่วนที่วิเคราะห์ ========================================================= */
+function markActive(groupId, attr, val){
+  Array.prototype.forEach.call(document.querySelectorAll('#'+groupId+' button'), function(b){
+    b.classList.toggle('on', b.getAttribute(attr) === val);
+  });
+}
+function setView(v){ VIEW = v; markActive('viewGroup','data-view',v); document.getElementById('sideOptions').style.display = (v==='side')?'flex':'none'; onModeChanged(); }
+function setRegion(r){ REGION = r; markActive('regionGroup','data-region',r); onModeChanged(); }
+function setMode(m){
+  ANALYSIS_MODE = m;
+  markActive('modeGroup','data-mode',m);
+  var sup = !!SUPINE[m];
+  var regionCol = document.getElementById('regionGroup').closest('.col-md-6');
+  var viewCol   = document.getElementById('viewGroup').closest('.col-md-6');
+  var sideBtn   = document.querySelector('#viewGroup button[data-view="side"]');
+  var fb = document.querySelector('#viewGroup button[data-view="front"]');
+  var bb = document.querySelector('#viewGroup button[data-view="back"]');
+  if (regionCol) regionCol.style.display = (m === 'armraise' || sup) ? 'none' : '';
+  if (viewCol)   viewCol.style.display   = (m === 'supine_slr') ? 'none' : '';
+  if (sideBtn)   sideBtn.style.display   = sup ? 'none' : '';
+  if (fb) fb.innerText = sup ? '⬆️ หัวอยู่บนภาพ' : '🧍 ด้านหน้า';
+  if (bb) bb.innerText = sup ? '⬇️ หัวอยู่ล่างภาพ' : '🔙 ด้านหลัง';
+  if (m === 'armraise'){
+    REGION = 'upper'; markActive('regionGroup','data-region','upper');
+  } else if (sup){
+    REGION = SUPINE[m];
+  } else if (String(REGION).indexOf('sup_') === 0){
+    REGION = 'full'; markActive('regionGroup','data-region','full');
+  }
+  if (m === 'supine_slr') { setView('side'); return; }
+  if (sup && VIEW === 'side') { setView('front'); return; }
+  onModeChanged();
+}
+function toggleLabels(){ SHOW_LABELS = document.getElementById('labelToggle').checked; refreshRender(); }
+function toggleSen(){
+  SHOW_SEN = document.getElementById('senToggle').checked;
+  try { localStorage.setItem('aw_show_sen', SHOW_SEN ? '1' : '0'); } catch(e){}
+  onModeChanged();
+}
+function onModeChanged(){
+  currentPayload = null;
+  document.getElementById('senLegend').style.display = senAllowed() ? 'inline' : 'none';
+  buildMetricGrid(); updateHint(); updateSaveState(); refreshRender();
+}
+/* วาดภาพเดิมใหม่เมื่อเปลี่ยนการตั้งค่า (ภาพนิ่ง) — กล้องจะอัปเดตเองในเฟรมถัดไป */
+function refreshRender(){
+  if (lastSourceType === 'image' && imgEl.src && imgEl.naturalWidth){
+    render(imgEl, lastLm, imgEl.naturalWidth, imgEl.naturalHeight);
+  }
+}
+function clearCanvas(){ ctx.clearRect(0, 0, canvasEl.width, canvasEl.height); }
+
+function updateHint(){
+  var t = '', title = '';
+  var head = (VIEW === 'back') ? 'หัวอยู่ล่างภาพ' : 'หัวอยู่บนภาพ';
+  if (ANALYSIS_MODE === 'supine_legs'){
+    t = 'ให้ผู้ป่วยนอนหงาย เหยียดขาตรง เท้าชิดกัน ถ่ายจากด้านบนให้เห็นสะโพกถึงปลายเท้า โดยวางลำตัวให้อยู่แนวตั้งของภาพ แล้วเลือกว่าหัวอยู่บนหรือล่างภาพ';
+    title = 'นอนหงาย: แนวขา (เข่าโก่ง/ชิด) — ' + head;
+  } else if (ANALYSIS_MODE === 'supine_slr'){
+    t = 'ให้ผู้ป่วยนอนหงาย ยกขาข้างที่ต้องการวัดขึ้นโดยเข่าเหยียดตรง ถ่ายจากด้านข้างให้เห็นไหล่ สะโพก และข้อเท้าชัดเจน วัดทีละข้าง (เลือก "ข้างลำตัวที่ใช้วัด" ให้ตรงกับข้างที่อยู่ใกล้กล้อง)';
+    title = 'นอนหงาย: ยกขา วัดมุมงอสะโพก — ด้านข้าง';
+  } else if (ANALYSIS_MODE === 'supine_heel'){
+    t = 'ให้ผู้ป่วยนอนหงาย เหยียดขาตรงทั้งสองข้าง ถ่ายจากด้านบนให้เห็นสะโพกถึงปลายเท้า ลำตัวอยู่แนวตั้งของภาพ "ต่ำกว่า" หมายถึงล้ำไปทางปลายเท้ามากกว่า';
+    title = 'นอนหงาย: เทียบส้นเท้าซ้าย-ขวา — ' + head;
+  } else if (ANALYSIS_MODE === 'armraise'){
+    t = 'ให้ผู้ป่วยยกแขนข้างที่ต้องการทดสอบขึ้นให้สุดเท่าที่ทำได้ ถ่ายให้เห็นตั้งแต่ศีรษะถึงข้อศอกชัดเจน';
+    title = 'ทดสอบยกแขนข้างเดียว — ' + VIEW_TXT[VIEW];
+  } else {
+    if (VIEW === 'front') t = 'ให้ผู้ป่วยยืนตรง หันหน้าเข้ากล้อง ';
+    else if (VIEW === 'back') t = 'ให้ผู้ป่วยยืนตรง หันหลังให้กล้อง ';
+    else t = 'ให้ผู้ป่วยยืนตะแคง 90° ให้ข้างที่ต้องการวัดอยู่ใกล้กล้อง ';
+    if (REGION === 'upper') t += '• ถ่ายให้เห็นตั้งแต่ศีรษะถึงสะโพก';
+    else if (REGION === 'lower') t += '• ถ่ายให้เห็นตั้งแต่สะโพกถึงปลายเท้า';
+    else t += '• ถ่ายให้เห็นเต็มตัวตั้งแต่ศีรษะถึงเท้า';
+    title = (VIEW === 'side' ? 'แนวร่างกายเทียบแนวดิ่ง' : 'ความสมมาตรซ้าย-ขวา') + ' — ' + VIEW_TXT[VIEW] + ' • ' + REGION_TXT[REGION];
+  }
+  if (SHOW_SEN){
+    if (senAllowed()){
+      t += ' • 🧘 เปิดเส้นประธาน 10: ชื่อบนภาพจะแสดงเฉพาะเส้นประธาน ส่วนเส้นวัดองศาแสดงเป็นเส้น/จุดปกติไม่มีชื่อ';
+      if (VIEW === 'back') t += ' (ด้านหลังจะไม่เห็นจุดบนใบหน้า)';
+      title += ' + เส้นประธาน 10';
+    } else {
+      t += ' • ⚠️ เส้นประธาน 10 ใช้ไม่ได้กับมุมมองด้านข้าง/ท่ายกขา — เปลี่ยนเป็นด้านหน้าเพื่อแสดง';
+    }
+  }
+  document.getElementById('hintText').innerText = '💡 ' + t;
+  document.getElementById('metricTitle').innerText = title;
+}
+function buildMetricGrid(){
+  var list = activeMetrics(), html = '';
+  list.forEach(function(m){ html += '<div class="metric-box' + (m.sen ? ' sen' : '') + '"><div class="metric-label">'+m.label+'</div><div id="m_'+m.key+'" class="metric-value metric-na">-</div></div>'; });
+  document.getElementById('metricGrid').innerHTML = html;
+}
+function levelClass(l){ return l==='ok'?'metric-ok':l==='warn'?'metric-warn':l==='bad'?'metric-bad':l==='info'?'metric-info':'metric-na'; }
+
+/* ========================================================= AI ========================================================= */
+function initAI(){
+  try{
+    if (poseAI) return true;
+    if (typeof Pose === 'undefined'){ setStatus("⚠️ โหลดโมดูล AI ไม่สำเร็จ","warning"); return false; }
+    poseAI = new Pose({ locateFile:function(f){ return "https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/"+f; } });
+    poseAI.setOptions({ modelComplexity:1, smoothLandmarks:true, minDetectionConfidence:0.5, minTrackingConfidence:0.5 });
+    poseAI.onResults(onAIResults);
+    return true;
+  }catch(err){ setStatus("⚠️ เริ่มต้น AI ไม่สำเร็จ: "+err.message,"warning"); return false; }
+}
+
+/* ========================================================= ค้นหาผู้ป่วย ========================================================= */
+function searchPatient(){
+  var key = document.getElementById('searchCN').value.trim();
+  if(!key){ alert('กรุณาระบุเลข CN หรือชื่อ-นามสกุลที่ต้องการค้นหา'); return; }
+  var btn = document.getElementById('searchBtn');
+  btn.innerText = 'กำลังหา...'; btn.disabled = true; hideDebug();
+  document.getElementById('pickList').style.display = 'none';
+  function resetBtn(){ btn.innerText = 'ค้นหา'; btn.disabled = false; }
+  google.script.run
+    .withSuccessHandler(function(res){
+      resetBtn();
+      if (res && res.success && res.data){ applyPatient(res.data); return; }
+      if (res && Array.isArray(res.list) && res.list.length){ showPickList(res.list); return; }
+      fallbackSearch(key, (res && res.message) || 'ไม่พบข้อมูล');
+    })
+    .withFailureHandler(function(err){
+      resetBtn(); showDebug("searchPatientForPosture ล้มเหลว: "+(err&&err.message?err.message:err));
+      fallbackSearch(key, 'เรียกฟังก์ชันหลักไม่สำเร็จ');
+    })
+    .searchPatientForPosture(key);
+}
+function fallbackSearch(key, reason){
+  google.script.run
+    .withSuccessHandler(function(rows){
+      if (!rows || !rows.length){ alert('ไม่พบประวัติผู้ป่วยในระบบ\n('+reason+')'); return; }
+      if (rows.length === 1){ applyPatient(normalizeRow(rows[0])); } else { showPickList(rows.map(normalizeRow)); }
+    })
+    .withFailureHandler(function(err){
+      showDebug("searchAllPatients ล้มเหลวด้วย: "+(err&&err.message?err.message:err));
+      alert('ระบบฐานข้อมูลตอบกลับผิดพลาด');
+    })
+    .searchAllPatients(key);
+}
+function normalizeRow(p){
+  return { cn:p.cn||'-', prefix:p.prefix||'', name:p.name||'-', gender:p.gender||'-', weight:p.weight||'-', height:p.height||'-',
+    phone:p.phone||'-', dob:p.dob||'', idCard:p.idCard||'-', address:p.address||'-', relName:p.relName||'-', relPhone:p.relPhone||'-',
+    disease:p.disease||'-', medicalPlan:p.medicalPlan||'-', cc:"แพ้: "+(p.disease||'-')+" | สิทธิ: "+(p.medicalPlan||'-') };
+}
+function showPickList(list){
+  var box = document.getElementById('pickList'), html = '';
+  for (var i=0;i<list.length;i++){ var p=list[i]; html += '<div class="pick-item" data-idx="'+i+'"><b>CN '+esc(p.cn||'-')+'</b> — '+esc((p.prefix||'')+(p.name||'-'))+'</div>'; }
+  box.innerHTML = html; box.style.display = 'block';
+  Array.prototype.forEach.call(box.querySelectorAll('.pick-item'), function(el){
+    el.onclick = function(){ applyPatient(list[parseInt(this.getAttribute('data-idx'),10)]); box.style.display='none'; };
+  });
+}
+function applyPatient(d){
+  currentPatient = d;
+  if (window.awSetPatient) awSetPatient(d.cn, (d.prefix || '') + (d.name || ''));
+  document.getElementById('pCN').innerText      = d.cn || '-';
+  document.getElementById('pName').innerText    = ((d.prefix||'')+' '+(d.name||'')).trim() || '-';
+  document.getElementById('pGender').innerText  = d.gender || '-';
+  document.getElementById('pWH').innerText      = (d.weight||'-')+" กก. / "+(d.height||'-')+" ซม.";
+  document.getElementById('pPhone').innerText   = d.phone || '-';
+  document.getElementById('pAllergy').innerText = d.cc || '-';
+  document.getElementById('patientChips').style.display = 'flex';
+  document.getElementById('workspace').style.display = 'block';
+  setTopMessage("✅ พบผู้ป่วยแล้ว — เริ่มถ่ายภาพหรือเลือกดูประวัติด้านล่างได้เลย", "success");
+
+  currentCN = String(d.cn || '');
+  compareSel = {}; historyRecords = []; sessionGroups = []; lastCompare = null;
+  document.getElementById('comparePanel').style.display = 'none';
+  initAI(); buildMetricGrid(); updateHint();
+  loadHistory(currentCN, sessionFromUrl);
+  if (FOCUS === 'history'){
+    setTimeout(function(){
+      var el = document.getElementById('historyContainer');
+      if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+    }, 300);
+  }
+}
+
+function reAnalyze(){ if (lastSourceType === 'image' && imgEl.src) sendToAI(imgEl); }
+
+function toggleCamera(){
+  if (isCameraOpen){ closeCamera(); return; }
+  imgEl.removeAttribute('src'); document.getElementById('reAnalyzeBtn').style.display = 'none';
+  navigator.mediaDevices.getUserMedia({ video:{ facingMode:"environment", width:{ideal:720}, height:{ideal:960} } })
+    .then(function(stream){
+      localStream = stream; videoEl.srcObject = stream; videoEl.play();
+      isCameraOpen = true; lastSourceType = 'video';
+      var b = document.getElementById('cameraBtn'); b.innerHTML = "🛑 ปิดกล้อง"; b.className = "btn btn-danger";
+      setStatus("⏳ กำลังวิเคราะห์แบบเรียลไทม์...", "warning");
+      initAI();
+      if (poseAI) poseAI.setOptions({ modelComplexity:1, smoothLandmarks:true, minDetectionConfidence:0.5, minTrackingConfidence:0.5 });
+      processVideoLoop();
+    })
+    .catch(function(err){ alert("ไม่สามารถเข้าถึงกล้องได้\nError: "+err.message); });
+}
+function closeCamera(){
+  if (localStream) localStream.getTracks().forEach(function(t){ t.stop(); });
+  videoEl.srcObject = null; isCameraOpen = false;
+  var b = document.getElementById('cameraBtn'); b.innerHTML = "🎥 เปิดกล้อง (เรียลไทม์)"; b.className = "btn btn-outline-brown";
+  cancelAnimationFrame(captureAnimation); clearCanvas();
+}
+function processVideoLoop(){
+  if (!isCameraOpen) return;
+  var next = function(){ captureAnimation = requestAnimationFrame(processVideoLoop); };
+  if (videoEl.readyState >= 2 && poseAI){ var p; try{ p = poseAI.send({image:videoEl}); }catch(e){ next(); return; } if (p&&p.then) p.then(next,next); else next(); }
+  else { next(); }
+}
+
+/* ========================================================= คำนวณ ========================================================= */
+function sumVis(lm, arr){ var s=0; arr.forEach(function(i){ var p=lm[i]; s += (p&&p.visibility!==undefined)?p.visibility:(p?1:0); }); return s; }
+function makeCtx(lm, W, H){
+  var c = { view:VIEW, W:W, H:H, off:0, facing:0 };
+  c.P = function(i){ var p=lm[i]; if(!p) return null; if (p.visibility!==undefined && p.visibility<VIS_MIN) return null; return { x:p.x*W, y:p.y*H, v:p.visibility }; };
+  c.rawP = function(i){ var p=lm[i]; if(!p) return null; return { x:p.x*W, y:p.y*H, v:p.visibility }; };
+  if (VIEW === 'side'){
+    var sel = document.getElementById('sideSelect').value;
+    var visL = sumVis(lm,[7,11,13,15,23,25,27]), visR = sumVis(lm,[8,12,14,16,24,26,28]);
+    c.off = (sel==='L')?0:(sel==='R')?1:(visL>=visR?0:1);
+    c.S = function(i){ return c.P(i+c.off); };
+    var fsel = document.getElementById('faceSelect').value;
+    if (fsel==='R') c.facing=1; else if (fsel==='L') c.facing=-1; else c.facing = autoFacing(c);
+  }
+  return c;
+}
+function autoFacing(c){
+  var nose=c.P(0), ear=c.S(7);
+  if (nose&&ear&&Math.abs(nose.x-ear.x)>c.W*0.005) return nose.x>ear.x?1:-1;
+  var toe=c.S(31), heel=c.S(29);
+  if (toe&&heel&&Math.abs(toe.x-heel.x)>c.W*0.005) return toe.x>heel.x?1:-1;
+  return 0;
+}
+function computeMetrics(c){ var res={}; activeMetrics().forEach(function(m){ try{ res[m.key]=m.fn(c); }catch(e){ res[m.key]=na(); } }); return res; }
+function buildPayload(res){
+  var out = {};
+  var active = activeMetrics();
+  STD_KEYS.forEach(function(k){ out[k] = { text: res[k] ? res[k].text : '-' }; });
+  var extras = [];
+  active.forEach(function(m){ if (STD_KEYS.indexOf(m.key)===-1 && res[m.key] && res[m.key].level !== 'na') extras.push(m.short+': '+res[m.key].text); });
+  out.extra = extras.join(' | '); out.view = VIEW_TXT[VIEW]; out.region = REGION_TXT[REGION];
+  return out;
+}
+
+/* ========================================================= วาด ========================================================= */
+var CONN_FB = [[7,8],[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28],[27,29],[29,31],[27,31],[28,30],[30,32],[28,32]];
+var CONN_SIDE = [[7,11],[11,13],[13,15],[11,23],[23,25],[25,27],[27,29],[29,31],[27,31]];
+var PAIR_LINES = [[7,8],[13,14],[15,16],[25,26],[27,28],[29,30]];
+var NAMES = { 0:'จมูก',7:'หู',8:'หู',11:'ไหล่',12:'ไหล่',13:'ศอก',14:'ศอก',15:'ข้อมือ',16:'ข้อมือ',23:'สะโพก',24:'สะโพก',25:'เข่า',26:'เข่า',27:'ข้อเท้า',28:'ข้อเท้า',29:'ส้นเท้า',30:'ส้นเท้า',31:'ปลายเท้า',32:'ปลายเท้า' };
+function inRegion(i){
+  if (REGION==='sup_slr') return (i===0||i===7||i===8||i===11||i===12||(i>=23&&i<=32));
+  if (REGION==='sup_legs'||REGION==='sup_heel') return (i>=23&&i<=32);
+  var upper=(i===0||i===7||i===8||(i>=11&&i<=16)), lower=(i>=23&&i<=32);
+  if (REGION==='full') return upper||lower; if (REGION==='upper') return upper||(i===23||i===24); return lower;
+}
+function drawLine(a,b,color,w,dash){ ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=w; if(dash) ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); ctx.restore(); }
+function drawDot(p,r,fill){ ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2); ctx.fillStyle=fill; ctx.fill(); ctx.lineWidth=Math.max(1.5,r/3); ctx.strokeStyle='#ffffff'; ctx.stroke(); }
+function drawText(txt,p,r){
+  var fs = Math.round(Math.max(12, canvasEl.width/46));
+  ctx.save(); ctx.font='bold '+fs+'px Sarabun, sans-serif'; ctx.lineWidth=4; ctx.strokeStyle='rgba(0,0,0,0.75)';
+  ctx.strokeText(txt, p.x+r+4, p.y-r); ctx.fillStyle='#ffffff'; ctx.fillText(txt, p.x+r+4, p.y-r); ctx.restore();
+}
+function drawOverlay(c){
+  var W=c.W, H=c.H, lw=Math.max(3,W/170), rad=Math.max(4,W/130), side=(VIEW==='side'), nearSet={};
+  var senOn = senAllowed(), sg = senOn ? senGeom(c) : null;   // เปิดเส้นประธาน → ชื่อจุดปกติจะถูกซ่อน
+  if (senOn) drawSenUnder(c, sg);
+
+  if (side){ [7,11,13,15,23,25,27,29,31].forEach(function(i){ nearSet[i+c.off]=true; }); nearSet[0]=true; }
+  var shown=function(i){ return inRegion(i) && (!side||nearSet[i]); };
+  var pt=function(i){ return shown(i)?c.P(i):null; };
+  var ms=midPt(c.P(11),c.P(12)), mh=midPt(c.P(23),c.P(24)), hc=headCenter(c);
+  var refX=null;
+  if (side){ var an=c.S(27)||c.S(23); if(an) refX=an.x; }
+  else { var a1=c.P(27), a2=c.P(28); if(a1&&a2) refX=(a1.x+a2.x)/2; else if(mh) refX=mh.x; }
+  if (refX===null) refX=W/2;
+  drawLine({x:refX,y:0},{x:refX,y:H},'rgba(255,255,255,0.65)',Math.max(1.5,W/400),[10,8]);
+  var conns = side ? CONN_SIDE.map(function(p){ return [p[0]+c.off,p[1]+c.off]; }) : CONN_FB;
+  conns.forEach(function(p){ var a=pt(p[0]), b=pt(p[1]); if(a&&b) drawLine(a,b,'#00e676',lw); });
+  if (!side) PAIR_LINES.forEach(function(p){ var a=pt(p[0]), b=pt(p[1]); if(a&&b) drawLine(a,b,'#ffd54f',Math.max(1.5,lw*0.6),[6,5]); });
+  if (!side){
+    var showUp=(REGION!=='lower'&&REGION!=='sup_legs'&&REGION!=='sup_heel'), axis=[];
+    if (showUp&&hc) axis.push(hc); if (showUp&&ms) axis.push(ms); if (mh) axis.push(mh);
+    for (var k=0;k<axis.length-1;k++) drawLine(axis[k],axis[k+1],'#ffc107',lw*1.3);
+    if (showUp&&hc){ drawDot(hc,rad,'#ffc107'); if (!senOn) drawText('หัว',hc,rad); }
+    if (showUp&&ms){ drawDot(ms,rad,'#ffc107'); if (!senOn) drawText('คอ',ms,rad); }
+    if (mh){ drawDot(mh,rad,'#ffc107'); if (!senOn) drawText('กลางลำตัว',mh,rad); }
+  }
+  for (var i=0;i<=32;i++){
+    if (!inRegion(i) || (side && !nearSet[i])) continue;
+    var rp = c.rawP(i);
+    var nameOk = SHOW_LABELS && !senOn && NAMES[i];
+    if (!rp || rp.v===undefined) { if (rp) { drawDot(rp,rad,'#ff5252'); if (nameOk) drawText(NAMES[i],rp,rad); } continue; }
+    if (rp.v < VIS_WEAK) continue;
+    var weak = rp.v < VIS_MIN;
+    drawDot(rp, weak?rad*0.85:rad, weak?'#ffa733':'#ff5252');
+    if (nameOk) drawText(NAMES[i], rp, rad);
+  }
+
+  if (senOn) drawSenOver(c, sg);
+}
+function drawStamp(W,H){
+  var txt = VIEW_TXT[VIEW]+' • '+REGION_TXT[REGION] + (senAllowed() ? ' • เส้นประธาน 10' : '');
+  var fs = Math.round(Math.max(13, W/40));
+  ctx.save(); ctx.font='bold '+fs+'px Sarabun, sans-serif';
+  var w = ctx.measureText(txt).width+16;
+  ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(8,8,w,fs+12);
+  ctx.fillStyle='#ffffff'; ctx.fillText(txt,16,8+fs); ctx.restore();
+}
+function srcSize(src){ return { w: src.videoWidth||src.naturalWidth||src.width||480, h: src.videoHeight||src.naturalHeight||src.height||640 }; }
+function render(bg, lm, srcW, srcH){
+  var sc = Math.min(1, 1280/Math.max(srcW,srcH));
+  var W = Math.max(1,Math.round(srcW*sc)), H = Math.max(1,Math.round(srcH*sc));
+  if (canvasEl.width!==W||canvasEl.height!==H){ canvasEl.width=W; canvasEl.height=H; }
+  ctx.save(); ctx.clearRect(0,0,W,H); ctx.drawImage(bg,0,0,W,H);
+  if (!lm){ currentPayload=null; resetMetricValues(); updateSaveState(); if (lastSourceType==='video') setStatus("🔴 ไม่พบสรีระบุคคล","danger"); ctx.restore(); return; }
+  var c = makeCtx(lm,W,H); drawOverlay(c); drawStamp(W,H); ctx.restore();
+  var res = computeMetrics(c); showResults(res,c);
+}
+function resetMetricValues(){ activeMetrics().forEach(function(m){ var el=document.getElementById('m_'+m.key); if(el){ el.innerText='-'; el.className='metric-value metric-na'; } }); }
+function showResults(res,c){
+  var list=activeMetrics(), have=0;
+  list.forEach(function(m){ var r=res[m.key]||na(); var el=document.getElementById('m_'+m.key); if(el){ el.innerText=r.text; el.className='metric-value '+levelClass(r.level); } if(r.level!=='na') have++; });
+  if (have===0){ currentPayload=null; updateSaveState(); setStatus("🔴 จับจุดไม่ได้ในมุมมองที่เลือก","danger"); return; }
+  currentPayload = buildPayload(res); updateSaveState();
+  var info = VIEW_TXT[VIEW]+' • '+REGION_TXT[REGION] + (senAllowed() ? ' • เส้นประธาน 10' : '');
+  if (VIEW==='side'){ info += ' • ใช้ข้าง'+(c.off===0?'ซ้าย':'ขวา')+'ของผู้ป่วย'; info += c.facing===0?'':(' • หันไปทาง'+(c.facing>0?'ขวา':'ซ้าย')+'ของภาพ'); }
+  if (have<list.length) setStatus("🟡 ตรวจพบ "+have+"/"+list.length+" ค่า — "+info, "warning");
+  else setStatus("🟢 วิเคราะห์ครบ "+have+" ค่า — "+info, "success");
+}
+
+function handleImageUpload(event){
+  var file = event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  if (isCameraOpen) closeCamera();
+  setStatus("⏳ กำลังเปิดไฟล์ภาพ...", "warning");
+
+  var url = URL.createObjectURL(file), tmp = new Image();
+  tmp.onload = function(){
+    var sc = Math.min(1, 1280 / Math.max(tmp.naturalWidth, tmp.naturalHeight));
+    var c = document.createElement('canvas');
+    c.width = Math.round(tmp.naturalWidth * sc); c.height = Math.round(tmp.naturalHeight * sc);
+    c.getContext('2d').drawImage(tmp, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url);
+    imgEl.onload = function(){
+      lastSourceType = 'image'; lastLm = null; currentPayload = null;
+      document.getElementById('reAnalyzeBtn').style.display = 'inline-block';
+      render(imgEl, null, imgEl.naturalWidth, imgEl.naturalHeight);
+      setStatus("⏳ AI กำลังวิเคราะห์ (ครั้งแรกอาจใช้เวลา 10-30 วินาทีเพื่อโหลดโมเดล)...", "warning");
+      updateSaveState(); sendToAI(imgEl);
+    };
+    imgEl.src = c.toDataURL('image/jpeg', 0.9);
+  };
+  tmp.onerror = function(){
+    URL.revokeObjectURL(url);
+    setStatus("❌ เปิดไฟล์ภาพนี้ไม่ได้", "danger");
+    alert("เปิดไฟล์ภาพนี้ไม่ได้ (ถ้าเป็นไฟล์ .HEIC ให้เปิดใน Preview แล้วเลือก File > Export เป็น JPEG ก่อน หรือใช้ภาพ JPG/PNG)");
+  };
+  tmp.src = url;
+}
+
+function sendToAI(source){
+  if (!poseAI && !initAI()){ setStatus("⚠️ AI ยังไม่พร้อม — ตรวจสอบอินเทอร์เน็ตแล้วรีเฟรชหน้า", "warning"); return; }
+  if (source === imgEl) poseAI.setOptions({ modelComplexity:1, smoothLandmarks:false, minDetectionConfidence:0.4, minTrackingConfidence:0.4 });
+  clearTimeout(aiTimer);
+  aiTimer = setTimeout(function(){
+    setStatus("⏳ AI ใช้เวลานานผิดปกติ — ลองรีเฟรชหน้าแล้วอัปโหลดใหม่ หรือกด Cmd+Option+J ดูข้อความ error", "warning");
+  }, 25000);
+  try{
+    var p = poseAI.send({image: source});
+    if (p && p.catch) p.catch(function(err){ clearTimeout(aiTimer); setStatus("❌ ประมวลผลผิดพลาด: " + err.message, "danger"); });
+  }catch(err){ clearTimeout(aiTimer); setStatus("❌ ประมวลผลผิดพลาด: " + err.message, "danger"); }
+}
+
+function onAIResults(results){
+  clearTimeout(aiTimer);
+  lastLm = results.poseLandmarks || null;
+  var sz = srcSize(results.image);
+  render(results.image, lastLm, sz.w, sz.h);
+  if (!lastLm && lastSourceType === 'image'){
+    setStatus("🔴 AI ไม่พบสรีระบุคคลในภาพ — ลองถ่ายให้เห็นตัวชัดและเต็มตามส่วนที่เลือก (หรือเปลี่ยนเป็น 'ส่วนบน')", "danger");
+  }
+}
+
+function makeThumbDataUrl(srcCanvas, maxChars){
+  maxChars = maxChars || 42000;
+  var widths = [460, 360, 280, 200, 140];
+  for (var wi=0; wi<widths.length; wi++){
+    var w = Math.min(widths[wi], srcCanvas.width || widths[wi]);
+    var h = Math.max(1, Math.round((srcCanvas.height||w*1.3) * (w/(srcCanvas.width||w))));
+    var off = document.createElement('canvas'); off.width=w; off.height=h;
+    off.getContext('2d').drawImage(srcCanvas, 0, 0, w, h);
+    var q = 0.62;
+    for (var qi=0; qi<4; qi++){
+      var data = off.toDataURL('image/jpeg', q);
+      if (data.length <= maxChars) return data;
+      q -= 0.14;
+    }
+  }
+  var off2 = document.createElement('canvas'); off2.width=120; off2.height=Math.round((srcCanvas.height||150)*(120/(srcCanvas.width||120)));
+  off2.getContext('2d').drawImage(srcCanvas,0,0,off2.width,off2.height);
+  return off2.toDataURL('image/jpeg', 0.5);
+}
+
+/* ========================================================= ครั้งที่ (Session) ========================================================= */
+function fmtDate(s){ var m = String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? (m[3]+'/'+m[2]+'/'+m[1]) : String(s||'-'); }
+function comboOf(r){ return { view: r.view||VIEW_TXT.front, region: r.region||REGION_TXT.full }; }
+function comboKey(r){ var c = comboOf(r); return c.view+' • '+c.region; }
+function groupSessions(recs){
+  var map={}, order=[];
+  (recs||[]).forEach(function(r){
+    var d = String(r.date||'').substring(0,10);
+    var num = parseInt(r.session,10) || 0;
+    var key = num ? ('S'+num) : ('D'+d);
+    if (!map[key]){ map[key] = { key:key, num:num, ts:String(r.date||''), note:'', records:[] }; order.push(key); }
+    var g = map[key]; g.records.push(r);
+    if (String(r.date||'') && String(r.date) < g.ts) g.ts = String(r.date);
+    if (r.note && !g.note) g.note = r.note;
+  });
+  var list = order.map(function(k){ return map[k]; });
+  list.sort(function(a,b){ if (a.num&&b.num) return a.num-b.num; if (!a.num&&!b.num) return a.ts<b.ts?-1:(a.ts>b.ts?1:0); return a.num?1:-1; });
+  list.forEach(function(g){ g.label = g.num ? ('ครั้งที่ '+g.num) : ('ข้อมูลเดิม '+fmtDate(g.ts)); });
+  return list;
+}
+function maxSessionNum(){ var m=0; sessionGroups.forEach(function(g){ if (g.num>m) m=g.num; }); return m; }
+function findSessionByNum(n){ for (var i=0;i<sessionGroups.length;i++) if (sessionGroups[i].num===n) return sessionGroups[i]; return null; }
+function targetSessionNum(){
+  if (sessionFromUrl && !findSessionByNum(sessionFromUrl)) { var n = sessionFromUrl; sessionFromUrl = null; return n; }
+  var v=document.getElementById('sessionSelect').value;
+  if (v==='new'||v===''||v==null) return maxSessionNum()+1;
+  return parseInt(v,10)||(maxSessionNum()+1);
+}
+function refreshSessionSelect(selectNum){
+  var sel = document.getElementById('sessionSelect');
+  var prev = (selectNum!==null&&selectNum!==undefined) ? String(selectNum) : (sessionFromUrl ? String(sessionFromUrl) : sel.value);
+  var nums = sessionGroups.filter(function(g){ return g.num>0; });
+  var html='';
+  nums.forEach(function(g){ html += '<option value="'+g.num+'">ครั้งที่ '+g.num+' (มี '+g.records.length+' ภาพ)</option>'; });
+  html += '<option value="new">➕ ครั้งที่ '+(maxSessionNum()+1)+' (ครั้งใหม่)</option>';
+  sel.innerHTML = html;
+  var ok = Array.prototype.some.call(sel.options, function(o){ return o.value===prev; });
+  sel.value = ok ? prev : 'new';
+  onSessionChange();
+}
+function onSessionChange(){
+  var g = findSessionByNum(targetSessionNum());
+  document.getElementById('sessionNote').value = g ? (g.note||'') : '';
+  renderShotChips(); updateSaveState();
+}
+function renderShotChips(){
+  var g = findSessionByNum(targetSessionNum());
+  var el = document.getElementById('shotChips');
+  if (!g || !g.records.length){ el.innerHTML = '<span class="text-muted small">ยังไม่มีภาพในครั้งนี้</span>'; return; }
+  var seen={}, html='';
+  g.records.forEach(function(r){ var k=comboKey(r); seen[k]=(seen[k]||0)+1; });
+  Object.keys(seen).forEach(function(k){ html += '<span class="shot-chip">✓ '+esc(k)+(seen[k]>1?' ×'+seen[k]:'')+'</span>'; });
+  el.innerHTML = html;
+}
+function updateSaveState(){
+  renderDxSuggest();
+  var btn = document.getElementById('saveBtn'), hint = document.getElementById('saveHint');
+  if (!btn) return;
+  var num = targetSessionNum();
+  if (saving){ btn.disabled = true; return; }
+  btn.disabled = !currentPayload;
+  btn.innerText = '💾 บันทึกครั้งที่ '+num;
+  hint.innerText = currentPayload ? ('พร้อมบันทึก: '+VIEW_TXT[VIEW]+' • '+REGION_TXT[REGION]+(senAllowed()?' (รวมค่าเส้นประธาน 10)':'')) : 'ต้องมีผลวิเคราะห์ในขั้นตอนที่ 4 ก่อนจึงจะบันทึกได้';
+}
+
+/* ========================================================= บันทึกผล ========================================================= */
+function saveTrackingData(){
+  if (!currentPayload){ alert("ยังไม่พบผลวิเคราะห์"); return; }
+  var cn = document.getElementById('pCN').innerText;
+  if (!cn || cn === '-'){ alert("กรุณาค้นหาผู้ป่วยก่อนบันทึก"); return; }
+
+  var num = targetSessionNum();
+  var note = document.getElementById('sessionNote').value.trim();
+  var g = findSessionByNum(num);
+  if (g){
+    var mine = VIEW_TXT[VIEW]+' • '+REGION_TXT[REGION];
+    var dup = g.records.some(function(r){ return comboKey(r)===mine; });
+    if (dup && !confirm('ครั้งที่ '+num+' มีภาพ "'+mine+'" อยู่แล้ว\nต้องการบันทึกเพิ่มอีกภาพหรือไม่?')) return;
+  }
+
+  var payload = JSON.parse(JSON.stringify(currentPayload));
+  payload.session = num; payload.note = note;
+  payload.thumb = makeThumbDataUrl(canvasEl).split(',')[1];
+
+  var btn = document.getElementById('saveBtn');
+  saving = true; btn.disabled = true; btn.innerText = "⏳ กำลังบันทึกประวัติ...";
+
+  var base64Image = canvasEl.toDataURL("image/jpeg", 0.85);
+  var name = document.getElementById('pName').innerText;
+
+  google.script.run
+    .withSuccessHandler(function(res){
+      saving = false;
+      if (res && res.success){ setTopMessage("✅ บันทึกแล้ว: ครั้งที่ "+num, "success"); loadHistory(cn, num); }
+      else { alert("เกิดข้อผิดพลาด: "+(res&&res.message)); updateSaveState(); }
+    })
+    .withFailureHandler(function(err){ saving=false; alert("ระบบขัดข้อง: "+(err&&err.message?err.message:err)); updateSaveState(); })
+    .saveBodyTracking(cn, name, base64Image, payload);
+}
+
+/* ========================================================= ประวัติ ========================================================= */
+function loadHistory(cn, selectNum){
+  var box = document.getElementById('historyContainer');
+  box.innerHTML = '<p class="text-center small mt-3 text-primary">⏳ กำลังเรียกข้อมูลประวัติ...</p>';
+  google.script.run
+    .withSuccessHandler(function(records){
+      if (String(cn) !== String(currentCN)) return;
+      historyRecords = records || [];
+      sessionGroups = groupSessions(historyRecords);
+      var alive = {}; sessionGroups.forEach(function(g){ alive[g.key]=true; });
+      Object.keys(compareSel).forEach(function(k){ if (!alive[k]) delete compareSel[k]; });
+      renderHistory(); refreshSessionSelect(selectNum); updateCompareBar();
+    })
+    .withFailureHandler(function(err){
+      box.innerHTML = '<p class="text-danger small text-center mt-3">โหลดประวัติไม่สำเร็จ</p>';
+      refreshSessionSelect(selectNum);
+    })
+    .getTrackingHistory(cn);
+}
+function recMetrics(r){
+  var labels = (r.view === VIEW_TXT.side) ? LABELS_SIDE : LABELS_FB, out = [];
+  STD_KEYS.forEach(function(k){ var v=r[k]; if (v!==undefined && v!==null && String(v).trim()!=='' && String(v).trim()!=='-') out.push({key:k,label:labels[k],text:String(v)}); });
+  if (r.extra){ String(r.extra).split(' | ').forEach(function(seg){ var i=seg.indexOf(': '); if (i>0) out.push({ key:'x_'+seg.substring(0,i), label:seg.substring(0,i), text:seg.substring(i+2) }); }); }
+  return out;
+}
+function renderHistory(){
+  var box = document.getElementById('historyContainer');
+  if (!sessionGroups.length){ box.innerHTML = '<p class="text-muted small text-center mt-3">ยังไม่เคยมีประวัติการบันทึกภาพสรีระสำหรับผู้ป่วยรายนี้</p>'; return; }
+  var html = '<div class="sess-list">';
+  sessionGroups.slice().reverse().forEach(function(g){
+    var checked = compareSel[g.key] ? ' checked' : '';
+    html += '<div class="sess-card'+(compareSel[g.key]?' selected':'')+'" id="sc_'+esc(g.key)+'">'
+          + '<div class="sess-head">'
+          + '<label class="sess-check"><input type="checkbox" data-key="'+esc(g.key)+'"'+checked+' onchange="toggleCompare(this.getAttribute(\'data-key\'), this.checked)">'
+          + '<span class="sess-title">'+esc(g.label)+'</span></label>'
+          + '<span class="sess-date">📅 '+esc(fmtDate(g.ts))+'</span>'
+          + '<span class="sess-count">'+g.records.length+' ภาพ</span>'
+          + '<button type="button" class="btn btn-outline-danger sess-del-btn" onclick="deleteSession(\''+esc(g.key)+'\')">🗑️ ลบครั้งนี้</button>'
+          + '</div>';
+    if (g.note) html += '<div class="sess-note">📝 '+esc(g.note)+'</div>';
+    html += '<div class="thumb-grid">';
+    g.records.forEach(function(r){
+      html += '<div class="thumb-wrap">'
+            + '<a class="thumb" href="'+esc(r.openUrl||r.imageUrl)+'" target="_blank">'
+            + '<img src="'+esc(r.imageUrl)+'" alt="" onerror="this.style.display=\'none\'">'
+            + '<div class="thumb-cap">'+esc(comboKey(r))+'</div></a>'
+            + '<button type="button" class="thumb-del" title="ลบภาพนี้" onclick="deleteSingleRecord(\''+esc(r.id||'')+'\',\''+esc(g.key)+'\')">✕</button>'
+            + '</div>';
+    });
+    html += '</div>';
+    html += '<details class="sess-detail"><summary>ดูค่าที่วัดได้</summary>';
+    g.records.forEach(function(r){
+      html += '<div class="detail-block"><b>'+esc(comboKey(r))+'</b> <span class="text-muted">('+esc(fmtDate(r.date))+')</span><br>';
+      recMetrics(r).forEach(function(m){ html += esc(m.label)+': '+esc(m.text)+'<br>'; });
+      html += '</div>';
+    });
+    html += '</details></div>';
+  });
+  html += '</div>';
+  box.innerHTML = html;
+}
+
+/* ========================================================= ลบข้อมูล ========================================================= */
+function findGroupByKey(key){ for (var i=0;i<sessionGroups.length;i++) if (sessionGroups[i].key===key) return sessionGroups[i]; return null; }
+function runDelete(ids, onDone){
+  if (!currentCN){ alert('ไม่พบผู้ป่วย'); return; }
+  google.script.run
+    .withSuccessHandler(function(res){ if (res && res.success) onDone(); else alert('ลบไม่สำเร็จ'); })
+    .withFailureHandler(function(err){ alert('ระบบขัดข้อง'); })
+    .deleteTrackingRecords(currentCN, ids);
+}
+function afterDeleteRefresh(){
+  renderHistory(); refreshSessionSelect(null); updateCompareBar();
+  if (document.getElementById('comparePanel').style.display === 'block'){
+    if (selectedGroups().length >= 2) openCompare(true); else closeCompare();
+  }
+}
+function deleteSingleRecord(id, gKey){
+  if (!id){ alert('ไม่พบรหัสภาพนี้'); return; }
+  if (!confirm('ลบภาพนี้ออกจากประวัติ?')) return;
+  runDelete([id], function(){
+    var g = findGroupByKey(gKey);
+    if (g){ g.records = g.records.filter(function(r){ return r.id!==id; }); if (!g.records.length){ sessionGroups = sessionGroups.filter(function(x){ return x.key!==gKey; }); delete compareSel[gKey]; } }
+    historyRecords = historyRecords.filter(function(r){ return r.id!==id; });
+    afterDeleteRefresh();
+  });
+}
+function deleteSession(key){
+  var g = findGroupByKey(key); if (!g) return;
+  var ids = []; g.records.forEach(function(r){ if (r.id) ids.push(r.id); });
+  if (!ids.length){ alert('ไม่พบรหัสภาพ'); return; }
+  if (!confirm('ลบ "'+g.label+'" ทั้งหมด ('+g.records.length+' ภาพ)?')) return;
+  runDelete(ids, function(){
+    sessionGroups = sessionGroups.filter(function(x){ return x.key!==key; }); delete compareSel[key];
+    historyRecords = historyRecords.filter(function(r){ return ids.indexOf(r.id)===-1; });
+    afterDeleteRefresh();
+  });
+}
+
+/* ========================================================= เปรียบเทียบ ========================================================= */
+function toggleCompare(key, on){
+  if (on){
+    if (Object.keys(compareSel).length >= MAX_COMPARE){ alert('เลือกเปรียบเทียบได้สูงสุด '+MAX_COMPARE+' ครั้ง'); renderHistory(); return; }
+    compareSel[key] = true;
+  } else { delete compareSel[key]; }
+  var card = document.getElementById('sc_'+key);
+  if (card){ card.classList.toggle('selected', !!on); }
+  updateCompareBar();
+  if (document.getElementById('comparePanel').style.display === 'block'){
+    if (selectedGroups().length >= 2) openCompare(true); else document.getElementById('comparePanel').style.display = 'none';
+  }
+}
+function clearCompareSelection(){ compareSel = {}; document.getElementById('comparePanel').style.display = 'none'; renderHistory(); updateCompareBar(); }
+function updateCompareBar(){ var n = Object.keys(compareSel).length; var btn = document.getElementById('cmpBtn'); btn.innerText = '📊 เปรียบเทียบ ('+n+')'; btn.disabled = n < 2; }
+function selectedGroups(){ return sessionGroups.filter(function(g){ return compareSel[g.key]; }); }
+function parseDeg(t){ if (t===null||t===undefined) return null; var m = String(t).match(/(\d+(?:\.\d+)?)\s*°/); return m?parseFloat(m[1]):null; }
+function dirToken(t){ var s=String(t||'').replace(/หน้าแข้ง/g,''); var best=null,bestIdx=1e9; ['ซ้าย','ขวา','หน้า','หลัง'].forEach(function(w){ var i=s.indexOf(w); if (i>-1&&i<bestIdx){bestIdx=i;best=w;} }); return best; }
+function isInfoRow(key, isSide){ return (isSide && (key==='elbow'||key==='wrist')) || String(key).indexOf('x_ยกขา')===0; }
+
+function openCompare(keepScroll){
+  var sel = selectedGroups();
+  var panel = document.getElementById('comparePanel');
+  if (sel.length < 2){ alert('กรุณาติ๊กเลือกอย่างน้อย 2 ครั้ง'); return; }
+
+  var cov = {}, order = [];
+  sel.forEach(function(g){
+    var seen = {};
+    g.records.forEach(function(r){ var k=comboKey(r); if (!seen[k]){ seen[k]=1; if (!cov[k]){cov[k]=0;order.push(k);} cov[k]++; } });
+  });
+  var avail = order.filter(function(k){ return cov[k] >= 2; });
+  avail.sort(function(a,b){ return cov[b]-cov[a]; });
+
+  var head = '<div class="cmp-head"><div class="ttl">📊 เปรียบเทียบ: '+sel.map(function(g){ return esc(g.label); }).join(' → ')+'</div>'
+           + '<button class="btn btn-outline-dark btn-sm fw-bold" onclick="exportCompare()">🖨️ ส่งออก/พิมพ์ (A4)</button>'
+           + '<button class="btn btn-outline-secondary btn-sm" onclick="closeCompare()">✖ ปิด</button></div>';
+
+  if (!avail.length){
+    lastCompare = null;
+    panel.innerHTML = head + '<div class="status s-warn" style="text-align:left">ครั้งที่เลือกไม่มีภาพชนิดเดียวกันให้เปรียบเทียบ</div>';
+    panel.style.display = 'block';
+    if (!keepScroll) panel.scrollIntoView({ behavior:'smooth', block:'start' });
+    return;
+  }
+
+  var prevCombo = document.getElementById('cmpCombo') ? document.getElementById('cmpCombo').value : '';
+  var use = (avail.indexOf(prevCombo) > -1) ? prevCombo : avail[0];
+  var opts = avail.map(function(k){ return '<option value="'+esc(k)+'"'+(k===use?' selected':'')+'>'+esc(k)+' (มีใน '+cov[k]+'/'+sel.length+' ครั้ง)</option>'; }).join('');
+
+  panel.innerHTML = head
+    + '<div class="mb-3"><span class="setting-title">เลือกชนิดภาพที่ต้องการเทียบ</span>'
+    + '<select id="cmpCombo" class="form-select" onchange="renderCompare(this.value)">'+opts+'</select></div>'
+    + '<div id="cmpBody"></div>';
+  panel.style.display = 'block';
+  renderCompare(use);
+  if (!keepScroll) panel.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+function closeCompare(){ document.getElementById('comparePanel').style.display = 'none'; }
+
+function renderCompare(combo){
+  var sel = selectedGroups();
+  var body = document.getElementById('cmpBody');
+  var isSide = String(combo).indexOf(VIEW_TXT.side) === 0;
+
+  var cols = sel.map(function(g){ var rec=null; g.records.forEach(function(r){ if (comboKey(r)===combo) rec=r; }); return { g:g, rec:rec }; });
+  var n = cols.length;
+
+  var imgs = '<div class="cmp-images" style="grid-template-columns:repeat('+n+',1fr)">';
+  cols.forEach(function(c,i){
+    var role = (i===0) ? 'ก่อน' : ((i===n-1) ? 'หลัง' : 'ระหว่าง');
+    imgs += '<div class="cmp-col"><div class="cmp-title">'+esc(c.g.label)+'<span class="role-chip">'+role+'</span><small>'+esc(fmtDate(c.g.ts))+(c.g.note?' • '+esc(c.g.note):'')+'</small></div>';
+    imgs += c.rec ? ('<a href="'+esc(c.rec.openUrl||c.rec.imageUrl)+'" target="_blank"><img src="'+esc(c.rec.imageUrl)+'" alt=""></a>') : '<div class="cmp-empty">ไม่มีภาพ</div>';
+    imgs += '</div>';
+  });
+  imgs += '</div>';
+
+  var rowsOrder=[], rowMap={};
+  cols.forEach(function(c,ci){ if (!c.rec) return; recMetrics(c.rec).forEach(function(m){ if (!rowMap[m.key]){ rowMap[m.key]={key:m.key,label:m.label,cells:[]}; rowsOrder.push(m.key); } rowMap[m.key].cells[ci]=m.text; }); });
+
+  var better=0, worse=0, same=0;
+  var tbl = '<div class="cmp-scroll"><table class="cmp-table"><thead><tr><th>รายการ</th>';
+  cols.forEach(function(c){ tbl += '<th>'+esc(c.g.label)+'</th>'; });
+  tbl += '<th>เปลี่ยนแปลง</th></tr></thead><tbody>';
+
+  rowsOrder.forEach(function(k){
+    var row = rowMap[k];
+    tbl += '<tr><td><b>'+esc(row.label)+'</b></td>';
+    for (var i=0;i<n;i++){ var tx=row.cells[i]; tbl += '<td>'+(tx?esc(tx):'<span class="text-muted">-</span>')+'</td>'; }
+
+    var firstI=-1, lastI=-1;
+    for (var j=0;j<n;j++){ if (row.cells[j]!==undefined && parseDeg(row.cells[j])!==null){ if (firstI<0) firstI=j; lastI=j; } }
+    var chg = '<span class="chg-same">-</span>';
+    if (firstI>=0 && lastI>firstI){
+      var d = parseDeg(row.cells[lastI]) - parseDeg(row.cells[firstI]);
+      var ad = Math.abs(d).toFixed(1);
+      if (isInfoRow(k,isSide)){ chg = (Math.abs(d)<0.5) ? '<span class="chg-same">≈ เท่าเดิม</span>' : '<span class="chg-info">'+(d>0?'▲ เพิ่ม ':'▼ ลด ')+ad+'°</span>'; }
+      else if (Math.abs(d)<0.5){ chg='<span class="chg-same">≈ เท่าเดิม</span>'; same++; }
+      else if (d<0){ chg='<span class="chg-good">▼ ลดลง '+ad+'° (ดีขึ้น)</span>'; better++; }
+      else { chg='<span class="chg-bad">▲ เพิ่มขึ้น '+ad+'° (เบี่ยงมากขึ้น)</span>'; worse++; }
+    }
+    tbl += '<td>'+chg+'</td></tr>';
+  });
+  tbl += '</tbody></table></div>';
+
+  var summary = '<div class="cmp-summary">สรุป: ดีขึ้น '+better+' รายการ • เบี่ยงมากขึ้น '+worse+' รายการ • เท่าเดิม '+same+' รายการ</div>';
+  body.innerHTML = imgs + (rowsOrder.length ? tbl+summary : '<div class="status s-warn">ไม่มีค่าให้เทียบ</div>');
+  lastCompare = { combo:combo, cols:cols, rowsOrder:rowsOrder, rowMap:rowMap, better:better, worse:worse, same:same };
+}
+
+/* ========================================================= พิมพ์รายงาน A4 ========================================================= */
+function ageFromDob(dobStr){
+  if (!dobStr) return '-';
+  var d = new Date(dobStr);
+  if (isNaN(d.getTime())) return '-';
+  var now = new Date(), age = now.getFullYear() - d.getFullYear();
+  var m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+  return age >= 0 ? (age + ' ปี') : '-';
+}
+function exportCompare(){
+  if (!lastCompare || !currentPatient){ alert('ไม่มีข้อมูลเปรียบเทียบ'); return; }
+    var p = currentPatient, st = lastCompare, BR = window.AW_BRAND || {};
+
+
+  var imgs = '';
+  st.cols.forEach(function(c,i){
+    var role = (i===0) ? 'ก่อน' : (i===st.cols.length-1 ? 'หลัง' : 'ระหว่าง');
+    imgs += '<div class="pcol"><div class="pcol-h">'+esc(c.g.label)+' <span class="role">'+role+'</span><br><small>'+esc(fmtDate(c.g.ts))+(c.g.note?' • '+esc(c.g.note):'')+'</small></div>';
+    imgs += c.rec && c.rec.imageUrl ? ('<img src="'+c.rec.imageUrl+'">') : '<div class="pempty">ไม่มีภาพ</div>';
+    imgs += '</div>';
+  });
+
+  var rows = '';
+  st.rowsOrder.forEach(function(k){
+    var row = st.rowMap[k];
+    rows += '<tr><td><b>'+esc(row.label)+'</b></td>';
+    for (var i=0;i<st.cols.length;i++){ var tx=row.cells[i]; rows += '<td>'+(tx?esc(tx):'-')+'</td>'; }
+    rows += '</tr>';
+  });
+  var theadCols = st.cols.map(function(c){ return '<th>'+esc(c.g.label)+'</th>'; }).join('');
+
+  var win = window.open('', '_blank');
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>รายงานเปรียบเทียบสรีระ</title><style>'
+    + "@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');"
+    + '@page{size:A4 landscape;margin:10mm;}'
+    + "body{font-family:'Sarabun',sans-serif;color:#1c1a17;margin:0;padding:4px;font-size:12.5px;}"
+    + '.hd{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #8d6e63;padding-bottom:8px;margin-bottom:12px;}'
+    + '.hd h1{font-size:18px;margin:0;color:#5C4033;} .hd div{color:#777;font-size:11px;}'
+    + '.pinfo{display:grid;grid-template-columns:repeat(4,1fr);gap:5px 18px;background:#faf7f2;border:1px solid #e7ded1;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;}'
+    + '.pinfo div b{color:#5C4033;} .pinfo .full{grid-column:span 4;} .allergy{color:#b71c1c;font-weight:700;}'
+    + '.pcols{display:grid;gap:10px;margin-bottom:14px;}'
+    + '.pcol{border:1px solid #ddd;border-radius:8px;overflow:hidden;text-align:center;}'
+    + '.pcol-h{background:#8d6e63;color:#fff;font-size:11px;padding:5px;line-height:1.3;}'
+    + '.role{background:rgba(255,255,255,.25);border-radius:8px;padding:0 6px;}'
+    + '.pcol img{width:100%;display:block;object-fit:contain;background:#f1f1f1;max-height:220px;}'
+    + '.pempty{padding:30px 5px;color:#999;font-size:11px;}'
+    + 'table{width:100%;border-collapse:collapse;font-size:11.5px;}'
+    + 'th,td{border:1px solid #ddd;padding:5px 7px;text-align:left;}'
+    + 'th{background:#f5efe9;color:#5C4033;}'
+    + '.summary{margin-top:10px;font-weight:700;font-size:12.5px;background:#f5efe9;border-radius:8px;padding:8px 10px;}'
+    + '.ft{margin-top:16px;display:flex;justify-content:space-between;font-size:10.5px;color:#888;border-top:1px dashed #ccc;padding-top:6px;}'
+    + '</style></head><body>'
+        + '<div class="hd"><div style="display:flex;align-items:center;gap:10px">' + (BR.logoUrl ? '<img src="'+esc(BR.logoUrl)+'" style="width:48px;height:48px;object-fit:contain">' : '')
+    + '<div><h1>'+esc(BR.clinicFull||BR.name||'')+'</h1><div>'+esc([BR.address, BR.phone ? 'โทร '+BR.phone : ''].filter(Boolean).join(' · '))+'</div>'
+    + '<div>รายงานเปรียบเทียบผลตรวจสรีระ ('+esc(st.combo)+')</div></div></div>'
+    + '<div>พิมพ์เมื่อ '+new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'})+'</div></div>'
+    + '<div class="pinfo">'
+    + '<div><b>CN:</b> '+esc(p.cn||'-')+'</div>'
+    + '<div><b>ชื่อ-นามสกุล:</b> '+esc((p.prefix||'')+(p.name||''))+'</div>'
+    + '<div><b>เพศ:</b> '+esc(p.gender||'-')+'</div>'
+    + '<div><b>อายุ:</b> '+ageFromDob(p.dob)+'</div>'
+    + '<div><b>น้ำหนัก/ส่วนสูง:</b> '+esc(p.weight||'-')+' กก. / '+esc(p.height||'-')+' ซม.</div>'
+    + '<div><b>เบอร์โทร:</b> '+esc(p.phone||'-')+'</div>'
+    + '<div><b>สิทธิการรักษา:</b> '+esc(p.medicalPlan||'-')+'</div>'
+    + '<div><b>เลขบัตรประชาชน:</b> '+esc(p.idCard||'-')+'</div>'
+    + '<div class="full"><b>ที่อยู่:</b> '+esc(p.address||'-')+'</div>'
+    + '<div class="full allergy"><b>⚠️ แพ้ยา/โรคประจำตัว:</b> '+esc(p.disease||'-')+'</div>'
+    + '</div>'
+    + '<div class="pcols" style="grid-template-columns:repeat('+st.cols.length+',1fr);">'+imgs+'</div>'
+    + (st.rowsOrder.length ? ('<table><thead><tr><th>รายการ</th>'+theadCols+'</tr></thead><tbody>'+rows+'</tbody></table>'
+      + '<div class="summary">สรุป: ดีขึ้น '+st.better+' รายการ • เบี่ยงมากขึ้น '+st.worse+' รายการ • เท่าเดิม '+st.same+' รายการ</div>') : '')
+        + '<div class="ft"><span>ลงชื่อผู้ตรวจ ....................................................</span><span>'+esc(BR.clinicFull||BR.name||'')+'</span></div>'
+
+    + '<script>window.onload=function(){ setTimeout(function(){ window.print(); window.close(); }, 500); };<\/script>'
+    + '</body></html>';
+  win.document.write(html);
+  win.document.close();
+}
+
+
+function loadDxRules(){}
+function renderDxSuggest(){}
+
+/* ========================================================= เริ่มต้น ========================================================= */
+document.getElementById('searchCN').addEventListener('keypress', function(e){ if (e.key === 'Enter') searchPatient(); });
+try {                                   // จำสถานะสวิตช์เส้นประธานไว้ในเครื่อง
+  if (localStorage.getItem('aw_show_sen') === '1'){ SHOW_SEN = true; document.getElementById('senToggle').checked = true; }
+} catch(e){}
+document.getElementById('senLegend').style.display = senAllowed() ? 'inline' : 'none';
+buildMetricGrid();
+updateHint();
+window.addEventListener('load', function(){
+  initAI();
+  loadDxRules();
+  if (cnFromUrl && cnFromUrl !== ""){ document.getElementById('searchCN').value = cnFromUrl; searchPatient(); }
+});
+</script>
+</body>
+</html>

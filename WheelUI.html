@@ -1,0 +1,144 @@
+<style>
+.wu-stage{perspective:1100px;padding-top:4px}
+.wu-stack{position:relative;width:100%;max-width:330px;aspect-ratio:1/1;margin:0 auto;transform-style:preserve-3d;transform:rotateX(28deg);transition:transform .4s;cursor:pointer}
+.wu-stack.flat{transform:none}
+.wu-layer{position:absolute;inset:0}
+.wu-layer svg{width:100%;height:100%;display:block;overflow:visible}
+.wu-mid{transform:translateZ(12px)}
+.wu-small{transform:translateZ(26px)}
+.wu-big svg{filter:drop-shadow(0 6px 8px rgba(0,0,0,.22))}
+.wu-mid svg,.wu-small svg{filter:drop-shadow(0 3px 4px rgba(0,0,0,.28))}
+</style>
+<script>
+var WheelUI = (function(){
+  var B = null, midRot = 0, smallRot = 0, runId = 0;
+  var MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  var MON = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var MLEN = [31,28,31,30,31,30,31,31,30,31,30,31], CUM = [0,31,59,90,120,151,181,212,243,273,304,334];
+  function g(id){ return document.getElementById(id); }
+  function P(r, a){ var t = a * Math.PI / 180; return [+(r * Math.sin(t)).toFixed(3), +(-r * Math.cos(t)).toFixed(3)]; }
+  function sector(r1, r2, a1, a2){
+    var p1 = P(r2, a1), p2 = P(r2, a2), p3 = P(r1, a2), p4 = P(r1, a1), lg = (a2 - a1) > 180 ? 1 : 0;
+    if (r1 <= 0) return 'M0,0 L' + p1 + ' A' + r2 + ' ' + r2 + ' 0 ' + lg + ' 1 ' + p2 + ' Z';
+    return 'M' + p1 + ' A' + r2 + ' ' + r2 + ' 0 ' + lg + ' 1 ' + p2 + ' L' + p3 + ' A' + r1 + ' ' + r1 + ' 0 ' + lg + ' 0 ' + p4 + ' Z';
+  }
+  function hex(c){ return (B && B.palette[c]) ? B.palette[c].hex : '#cccccc'; }
+
+  function mount(el){
+    el.innerHTML = '<div class="wu-stage"><div class="wu-stack" id="wuStack" title="แตะเพื่อสลับมุมมอง">'
+      + '<div class="wu-layer wu-big"><svg id="wuBig" viewBox="-140 -140 280 280"></svg></div>'
+      + '<div class="wu-layer wu-mid"><svg id="wuMid" viewBox="-140 -140 280 280"></svg></div>'
+      + '<div class="wu-layer wu-small"><svg id="wuSmall" viewBox="-140 -140 280 280"></svg></div></div></div>';
+    g('wuStack').onclick = function(){ this.classList.toggle('flat'); };
+  }
+  function buildBig(){
+    var s = '<circle r="132" fill="#fbfbf8" stroke="#9aa3a0" stroke-width=".8"/><circle r="100.6" fill="none" stroke="#c9cfcc" stroke-width=".4"/>', tk = '';
+    for (var m = 0; m < 12; m++){
+      for (var d = 1; d <= MLEN[m]; d++){
+        var a = (CUM[m] + d - 1) / 365 * 360, wk = ((d - 1) % 7 === 0), p1 = P(101.5, a), p2 = P(wk ? 106 : 103.8, a);
+        tk += '<line x1="' + p1[0] + '" y1="' + p1[1] + '" x2="' + p2[0] + '" y2="' + p2[1] + '" stroke="#333" stroke-width="' + (wk ? .45 : .22) + '"/>';
+        if (wk) tk += '<text transform="rotate(' + a.toFixed(2) + ') translate(0,-111)" text-anchor="middle" font-size="3.6" fill="#222">' + d + '</text>';
+      }
+      var mid = (CUM[m] + MLEN[m] / 2) / 365 * 360;
+      tk += '<text transform="rotate(' + mid.toFixed(2) + ') translate(0,-121)" text-anchor="middle" font-size="6.2" font-weight="700" fill="#1d2a26">' + MONTHS[m] + '</text>';
+    }
+    g('wuBig').innerHTML = s + tk + '<g id="wuMkTable" style="display:none"></g><g id="wuMkBirth" style="display:none"></g>';
+  }
+  function mkLine(id, deg, color, label){
+    var el = g(id), p1 = P(97, deg), p2 = P(108, deg);
+    el.innerHTML = '<line x1="' + p1[0] + '" y1="' + p1[1] + '" x2="' + p2[0] + '" y2="' + p2[1] + '" stroke="' + color + '" stroke-width="1.6"/>'
+      + '<circle cx="' + p2[0] + '" cy="' + p2[1] + '" r="2.2" fill="' + color + '"/>'
+      + '<text transform="rotate(' + deg.toFixed(2) + ') translate(0,-130.5)" text-anchor="middle" font-size="5" font-weight="700" fill="' + color + '">' + label + '</text>';
+    el.style.display = '';
+  }
+  function buildMid(){
+    var G = B.geom, s = '<circle r="100" fill="#fff" stroke="#aab2af" stroke-width=".6"/>';
+    function ring(list, r1, r2, withNo){
+      list.forEach(function(c){
+        s += '<path d="' + sector(r1, r2, c[0], c[1]) + '" fill="' + hex(c[2]) + '" stroke="#111" stroke-width=".45"/>';
+        if (withNo){ var mid = (c[0] + c[1]) / 2, rm = (r1 + r2) / 2;
+          s += '<text transform="rotate(' + mid.toFixed(1) + ') translate(0,-' + rm.toFixed(1) + ')" text-anchor="middle" dominant-baseline="central" font-size="5.2" font-weight="700" fill="#111">' + c[3] + '</text>'; }
+      });
+    }
+    ring(G.ring1, G.ringR.ring1[0], G.ringR.ring1[1]);
+    ring(G.ring2, G.ringR.ring2[0], G.ringR.ring2[1]);
+    ring(G.ring3, G.ringR.ring3[0], G.ringR.ring3[1], true);
+    ring(G.center, 0, G.ringR.center[1]);
+    s += '<circle r="1.6" fill="#fff" stroke="#555" stroke-width=".4"/>';
+    s += '<line x1="0" y1="-80" x2="0" y2="-97" stroke="#111" stroke-width="1.2"/><polygon points="0,-104 -3.6,-96.5 3.6,-96.5" fill="#111"/>';
+    g('wuMid').innerHTML = s + '<g id="wuHi"></g>';
+  }
+  function winHalf(r){
+    var w = B.geom.win, h = w.halfDeg * Math.PI / 180, a = w.apexR;
+    if (r <= a) return 0;
+    var t = -a * Math.cos(h) + Math.sqrt(a*a*Math.cos(h)*Math.cos(h) - a*a + r*r);
+    return Math.atan2(t * Math.sin(h), a + t * Math.cos(h)) * 180 / Math.PI;
+  }
+  function buildSmall(){
+    var G = B.geom, w = G.win, cr = winHalf(w.outerR);
+    var ap = [0, -w.apexR], c1 = P(w.outerR, -cr), c2 = P(w.outerR, cr);
+    var s = '<path fill-rule="evenodd" fill="#fdfdfb" stroke="#222" stroke-width=".8" d="M0,' + (-G.smallR) + ' A' + G.smallR + ' ' + G.smallR + ' 0 1 1 0,' + G.smallR + ' A' + G.smallR + ' ' + G.smallR + ' 0 1 1 0,' + (-G.smallR) + ' Z'
+          + ' M' + ap + ' L' + c1 + ' A' + w.outerR + ' ' + w.outerR + ' 0 0 1 ' + c2 + ' Z"/>';
+    s += '<circle r="91.5" fill="none" stroke="#222" stroke-width=".5"/><circle r="93.2" fill="none" stroke="#222" stroke-width=".5"/>';
+    s += '<path id="wuArc" d="M' + P(88, 8) + ' A88 88 0 0 1 ' + P(88, 62) + '" fill="none"/><text font-size="6" font-weight="700" fill="#111"><textPath href="#wuArc">ธาตุเจ้าเรือน</textPath></text>';
+    [['1', G.rows.r1], ['2', G.rows.r2], ['3', G.rows.r3]].forEach(function(x){
+      var p = P(x[1], winHalf(x[1]) + 5.5);
+      s += '<text x="' + p[0] + '" y="' + p[1] + '" font-size="7" font-weight="700" fill="#111" text-anchor="middle" dominant-baseline="central">' + x[0] + '</text>';
+    });
+    s += '<text x="26" y="-52" font-size="4.8" fill="#111">ฤดูสมุฏฐาน</text>';
+    s += '<g font-size="5.3" fill="#111"><text x="27" y="-25">ไฟ</text><text x="42.5" y="-25">ร้อน</text><text x="27" y="-15.5">ลม</text><text x="42.5" y="-15.5">ฝน</text>'
+       + '<text x="27" y="11.5">น้ำ</text><text x="44" y="11.5">หนาว</text><text x="27" y="39">ดิน</text></g>';
+    var leg = ['pink','orange','red','yellow','lgreen','green','lblue','indigo','purple','black'],
+        names = ['พัทธปิตตะ','อพัทธปิตตะ','กำเดา','หทัยวาตะ','สัตถกวาตะ','สุมนาวาตะ','คอเสมหะ','อุระเสมหะ','คูถเสมหะ',''];
+    leg.forEach(function(c, i){
+      var y = -42 + i * 9.05;
+      s += '<rect x="-60" y="' + (y - 3.6) + '" width="7" height="7" fill="' + hex(c) + '" stroke="#333" stroke-width=".3"/><text x="-50" y="' + (y + 1.8) + '" font-size="5.4" fill="#111">' + names[i] + '</text>';
+    });
+    s += '<circle r="1.8" fill="#fff" stroke="#555" stroke-width=".4"/>';
+    function arrow(deg){ return '<g transform="rotate(' + deg + ')"><rect x="-1.6" y="-100" width="3.2" height="6" fill="#3a3a3a"/><polygon points="0,-112 -7.5,-97 7.5,-97" fill="#3a3a3a"/></g>'; }
+    g('wuSmall').innerHTML = s + arrow(0) + arrow(270);
+  }
+  function applyRot(){
+    g('wuMid').style.transform = 'rotate(' + midRot + 'deg)';
+    g('wuSmall').style.transform = 'rotate(' + smallRot + 'deg)';
+  }
+  function highlight(ax){
+    var w = B.geom.win, cr = winHalf(w.outerR), ap = P(w.apexR, ax);
+    g('wuHi').innerHTML = '<path d="M' + ap + ' L' + P(w.outerR, ax - cr) + ' A' + w.outerR + ' ' + w.outerR + ' 0 0 1 ' + P(w.outerR, ax + cr) + ' Z" fill="none" stroke="#00c853" stroke-width="1.6"/>';
+  }
+  function ease(t){ return t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2; }
+  function tween(from, to, ms, setter, id){
+    return new Promise(function(res){
+      var d = ((to - from + 540) % 360) - 180, t0 = performance.now();
+      (function f(now){
+        if (id !== runId) return res(false);
+        var t = Math.min(1, (now - t0) / ms); setter(from + d * ease(t));
+        if (t < 1) requestAnimationFrame(f); else res(true);
+      })(t0);
+    });
+  }
+  function reset(){
+    runId++; midRot = 0; smallRot = 0;
+    if (!B) return;
+    applyRot(); g('wuMkTable').style.display = 'none'; g('wuMkBirth').style.display = 'none'; g('wuHi').innerHTML = '';
+  }
+  function show(R, animate){
+    if (!B || !R) return;
+    var id = ++runId, A = R.angles, b = R.birth, t = R.table;
+    midRot = 0; smallRot = 0; applyRot(); g('wuHi').innerHTML = '';
+    mkLine('wuMkTable', A.table, '#c28a00', t.d + ' ' + MON[t.m-1]);
+    mkLine('wuMkBirth', A.birth, '#d23b3b', b.d + ' ' + MON[b.m-1]);
+    if (!animate){ midRot = A.midRot; smallRot = A.smallRot; applyRot(); highlight(A.axis); return; }
+    tween(0, A.midRot, 1400, function(v){ midRot = v; applyRot(); }, id).then(function(ok){
+      if (!ok) return false;
+      midRot = A.midRot; applyRot();
+      return tween(0, A.smallRot, 1600, function(v){ smallRot = v; applyRot(); }, id);
+    }).then(function(ok){
+      if (!ok || id !== runId) return;
+      smallRot = A.smallRot; applyRot(); highlight(A.axis);
+    });
+  }
+  function init(bundle){ B = bundle; buildBig(); buildMid(); buildSmall(); applyRot(); }
+  return { mount: mount, init: init, show: show, reset: reset, hex: hex };
+})();
+</script>

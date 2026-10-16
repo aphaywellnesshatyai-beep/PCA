@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ธาตุเจ้าเรือน</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <?!= include('Theme') ?>
+  <style>
+    .nav-pills .nav-link{color:var(--ink);border:1px solid var(--line);margin:0 6px 6px 0;border-radius:8px;padding:9px 20px;background:var(--card2);font-weight:600}
+    .nav-pills .nav-link.active{background:var(--accent);color:var(--on-accent);border-color:transparent}
+
+    /* ===== เวที 3 มิติ ===== */
+    .stage{perspective:1300px;padding:6px 0 0}
+    .stack{position:relative;width:100%;max-width:560px;aspect-ratio:1/1;margin:0 auto;transform-style:preserve-3d;transform:rotateX(var(--tilt,38deg));transition:transform .35s}
+    .layer{position:absolute;inset:0;transform-style:flat}
+    .layer svg{width:100%;height:100%;display:block;overflow:visible}
+    .l-mid{transform:translateZ(14px)}
+    .l-small{transform:translateZ(30px)}
+    .l-big svg{filter:drop-shadow(0 8px 10px rgba(0,0,0,.25))}
+    .l-mid svg,.l-small svg{filter:drop-shadow(0 4px 5px rgba(0,0,0,.30))}
+    .wheel-ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;margin-top:12px}
+    .wheel-ctrl label{font-size:.8rem;color:var(--muted);margin:0}
+    .wheel-ctrl input[type=range]{width:150px;accent-color:var(--accent)}
+    .cap{background:var(--card2);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:8px;padding:10px 14px;font-size:.92rem;min-height:3.2em;margin-top:12px}
+    .steps{display:flex;gap:6px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+    .steps span{font-size:.75rem;padding:3px 10px;border-radius:12px;background:var(--card2);border:1px solid var(--line);color:var(--muted)}
+    .steps span.on{background:var(--accent);color:var(--on-accent);border-color:transparent}
+    .steps span.done{background:var(--halo);color:var(--accent)}
+
+    /* ===== ผลลัพธ์ ===== */
+    .rd-card{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--gold);border-radius:8px;padding:14px 16px;margin-bottom:12px}
+    .rd-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .chip{display:inline-block;width:22px;height:22px;border-radius:5px;border:1px solid rgba(0,0,0,.35);flex:0 0 auto}
+    .rd-t{font-size:.8rem;color:var(--muted);font-weight:600}
+    .rd-name{font-size:1.2rem;font-weight:700;color:var(--accent)}
+    .rd-note{font-size:.82rem;color:var(--warn);margin-top:4px}
+    .rd-cov{font-size:.8rem;color:var(--muted);margin-top:4px}
+    .rd-f{font-size:.9rem;margin-top:6px}
+    .rd-f b{color:var(--accent)}
+    .oil-box{border:1px solid var(--line);border-top:5px solid var(--gold);border-radius:8px;padding:14px 16px;background:var(--card2)}
+    .tbl-info{font-size:.9rem}
+    .tbl-info b{color:var(--accent)}
+
+    /* ===== แอดมิน ===== */
+    details.adm{border:1px solid var(--line);border-radius:8px;margin-top:18px;background:var(--card)}
+    details.adm>summary{padding:12px 16px;cursor:pointer;font-weight:700;color:var(--accent)}
+    .adm-body{padding:0 16px 16px}
+    .adm-grp{font-weight:700;margin:16px 0 6px;color:var(--accent);border-bottom:1px solid var(--line);padding-bottom:4px}
+    details.adm-e{border:1px solid var(--line);border-radius:6px;margin-bottom:6px;background:var(--card2)}
+    details.adm-e>summary{padding:8px 12px;cursor:pointer;font-weight:600;font-size:.9rem;display:flex;align-items:center;gap:8px}
+    .adm-e .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;padding:0 12px 12px}
+    .adm-e label{font-size:.75rem;color:var(--muted);display:block;margin-bottom:2px}
+    .adm-e textarea,.adm-e input{width:100%;font-size:.85rem}
+
+    .herb-item{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px}
+    .label-green{color:var(--accent);font-weight:700;display:inline-block;width:100%;margin-bottom:4px}
+    @media(min-width:768px){.label-green{width:220px;margin-bottom:0}}
+    .herb-solution-box{background:var(--card);border-radius:8px;padding:18px;border:1px solid var(--line)}
+
+    /* ===== พิมพ์ A4 แนวนอน (หน้าเดียว) ===== */
+    #printArea{display:none}
+    #previewOverlayBg{display:none;position:fixed;inset:0;background:rgba(15,23,42,.7);z-index:2990}
+    #printArea.preview-active{display:flex;flex-direction:column;position:fixed;left:50%;top:calc(50% - 26px);width:297mm;height:210mm;box-sizing:border-box;padding:8mm 10mm;background:#fff;color:#111;z-index:3000;transform:translate(-50%,-50%) scale(var(--ps,.8));box-shadow:0 20px 60px rgba(0,0,0,.5);overflow:hidden;font-size:10pt;line-height:1.35;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .pa-head{display:flex;align-items:center;gap:12px;border-bottom:2.5px solid #1f4d3f;padding-bottom:6px;margin-bottom:8px;flex:0 0 auto}
+    .pa-head img{width:48px;height:48px;object-fit:contain}
+    .pa-crest{width:46px;height:46px;border:1.5px solid #b08d3c;border-radius:50%;display:grid;place-items:center;color:#b08d3c;font-weight:700;font-size:1.25em}
+    .pa-id small{display:block;color:#555;font-size:.78em;line-height:1.3}
+    .pa-head h2{margin:0;font-size:1.5em;color:#1f4d3f;line-height:1.15}
+    .pa-head small{display:block;color:#555;font-size:.8em}
+    .pa-title{margin-left:auto;text-align:right}
+    .pa-title b{display:block;font-size:1.25em;color:#1f4d3f}
+    .pa-title span{font-size:.85em;color:#333}
+    .pa-main{flex:1 1 auto;min-height:0;display:flex;gap:8mm}
+    .pa-left{flex:0 0 108mm;display:flex;flex-direction:column;gap:5px}
+    .pa-left svg{width:108mm;height:108mm;display:block}
+    .pa-info{border:1px solid #cfd6d2;border-radius:5px;padding:5px 8px;font-size:.85em;background:#faf9f6}
+    .pa-info b{color:#1f4d3f}
+    .pa-right{flex:1 1 auto;min-width:0;column-count:2;column-gap:6mm;column-fill:balance;overflow:hidden}
+    .pa-card{break-inside:avoid;border:1px solid #cfd6d2;border-left:5px solid var(--c,#b08d3c);border-radius:5px;padding:5px 8px;margin-bottom:5px;background:#fff}
+    .pa-card h4{margin:0 0 2px;font-size:1.05em;color:#1f4d3f;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .pa-card h4 i{font-style:normal;color:#111}
+    .pa-chip{display:inline-block;width:.95em;height:.95em;border-radius:3px;border:1px solid #333}
+    .pa-card p{margin:2px 0;font-size:.92em}
+    .pa-card p b{color:#1f4d3f}
+    .pa-near{color:#a15c00;font-size:.85em}
+    .pa-foot{flex:0 0 auto;margin-top:6px;border:1.5px solid #b08d3c;border-radius:6px;padding:5px 10px;background:#fbf7ec}
+    .pa-foot b{color:#1f4d3f}
+    .pa-date{flex:0 0 auto;font-size:.7em;color:#777;text-align:right;margin-top:3px}
+    #prCtl{display:none;position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:3100;gap:10px;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 16px)}
+    #prToast{display:none;order:-1;width:100%;text-align:center;font-size:.85rem;background:#fff;color:#1d2a26;border-radius:8px;padding:6px 12px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+    #prToast.show{display:block}#prToast.bad{background:#fde8e6;color:#8a2a21}
+    #imgOv{position:fixed;inset:0;z-index:3300;background:rgba(15,23,42,.88);display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px;overflow:auto}
+    #imgOv img{max-width:100%;height:auto;background:#fff;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+    #imgOv .t{color:#fff;font-size:.9rem;text-align:center}
+    #prCtl.on{display:flex}
+    #prCtl button{border:0;border-radius:8px;padding:10px 24px;font-weight:700;font-family:inherit;cursor:pointer}
+    @media print{
+      @page{size:A4 landscape;margin:0}
+      html,body{margin:0!important;padding:0!important;background:#fff!important;height:auto!important}
+      body>*:not(#printArea){display:none!important}
+      #printArea.preview-active{position:relative;left:auto;top:auto;transform:none!important;box-shadow:none;width:297mm;height:209mm;break-after:avoid;page-break-after:avoid}
+    }
+  </style>
+</head>
+<body data-page="element">
+<div class="page" style="max-width:1100px;">
+  <h3 class="header-title">ธาตุเจ้าเรือน</h3>
+  <p class="header-sub">วิเคราะห์ตามวิธีของแผ่นธาตุเจ้าเรือน (แผ่นใหญ่ · แผ่นกลาง · แผ่นเล็ก) และค้นหายาสมุนไพรลดผลข้างเคียง</p>
+
+  <ul class="nav nav-pills" role="tablist">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab1">วิเคราะห์ธาตุเจ้าเรือน</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab2">ยาสมุนไพรลดผลข้างเคียง</button></li>
+  </ul>
+
+  <div class="tab-content mt-2">
+    <!-- ===== แท็บ 1 ===== -->
+    <div class="tab-pane fade show active" id="tab1">
+      <div class="card-lux mb-3">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-5">
+            <label class="form-label">วันเดือนปีเกิด</label>
+            <input type="date" id="bDate" class="form-control form-control-lg">
+          </div>
+          <div class="col-md-3 col-6"><button id="btn1" class="btn btn-lux btn-lg w-100" onclick="analyze(false)">วิเคราะห์ (เล่นขั้นตอน)</button></div>
+          <div class="col-md-2 col-6"><button class="btn btn-outline-primary btn-lg w-100" onclick="analyze(true)">ดูผลทันที</button></div>
+          <div class="col-md-2"><button class="btn btn-outline-secondary btn-lg w-100" onclick="previewPrint()">พิมพ์ A4</button></div>
+        </div>
+        <div id="msg" class="small mt-2" style="color:var(--bad)"></div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <div class="card-lux">
+            <div class="stage"><div class="stack" id="stack">
+              <div class="layer l-big"><svg id="svgBig" viewBox="-140 -140 280 280"></svg></div>
+              <div class="layer l-mid"><svg id="svgMid" viewBox="-140 -140 280 280"></svg></div>
+              <div class="layer l-small"><svg id="svgSmall" viewBox="-140 -140 280 280"></svg></div>
+            </div></div>
+            <div class="wheel-ctrl">
+              <label>มุมเอียง 3 มิติ <input type="range" id="tilt" min="0" max="65" value="38" oninput="setTilt(this.value)"></label>
+              <button class="btn btn-sm btn-outline-secondary" onclick="resetWheel()">รีเซ็ตแผ่น</button>
+            </div>
+            <div class="steps" id="steps"><span>1 ดูตาราง พ.ศ.</span><span>2 หมุนแผ่นกลาง</span><span>3 หมุนแผ่นเล็ก</span><span>4 อ่านช่อง</span></div>
+            <div class="cap" id="cap">กรอกวันเกิดแล้วกด "วิเคราะห์" ระบบจะหมุนแผ่นให้ดูทีละขั้นตอนเหมือนใช้แผ่นจริง</div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="card-lux" id="resCard" style="display:none">
+            <h5 class="fw-bold mb-3" style="color:var(--accent)">ผลการอ่านช่อง</h5>
+            <div class="tbl-info mb-3" id="tblInfo"></div>
+            <div id="rows"></div>
+            <div class="oil-box mt-3" id="oilBox" style="display:none"><b style="color:var(--accent)">น้ำมันหอมระเหยที่แนะนำ</b><div id="oilTxt" class="fs-5 fw-bold mt-1"></div></div>
+            <div class="small text-muted mt-3">ค่ามุมวัดจากรูปถ่ายแผ่นจริง การหมุนแผ่นจริงด้วยมืออาจคลาดเคลื่อนได้ 2–5 วัน จึงมีการแจ้ง "ใกล้ขอบสี" และแสดงสีอื่นที่ปรากฏในช่องด้วย</div>
+          </div>
+          <div class="card-lux" id="hintCard"><div class="text-muted">ผลการอ่านทั้ง 4 วง (วงนอก · วงที่ 2 · วงที่ 3 · วงกลาง/ฤดูสมุฏฐาน) จะแสดงที่นี่</div></div>
+        </div>
+      </div>
+
+      <details class="adm" id="admBox" style="display:none">
+        <summary>ตั้งค่าความหมายของแต่ละสี (เฉพาะแอดมิน)</summary>
+        <div class="adm-body">
+          <p class="small text-muted mt-2">กรอกชื่อที่แสดงและข้อมูลของแต่ละสีตามแต่ละวง เว้นว่างได้ — ช่องที่เว้นว่างจะไม่แสดงในผลลัพธ์ ค่าที่บันทึกเก็บในชีต "Wheel_Config" (แก้ในชีตโดยตรงก็ได้)</p>
+          <label class="form-label">วงที่ใช้เป็น "ธาตุเจ้าเรือนหลัก" (ส่งต่อไปหน้าบันทึกการรักษา)</label>
+          <select id="primarySel" class="form-select mb-2" style="max-width:340px">
+            <option value="r1">วงนอก (แถว 1)</option><option value="r2">วงที่ 2 (แถว 2)</option><option value="r3">วงที่ 3 (แถว 3)</option><option value="s">วงกลาง (ฤดูสมุฏฐาน)</option>
+          </select>
+          <div id="admList"></div>
+          <button class="btn btn-lux mt-3" id="admSave" onclick="saveAdmin()">บันทึกการตั้งค่า</button>
+          <span id="admMsg" class="ms-2 small"></span>
+        </div>
+      </details>
+    </div>
+
+    <!-- ===== แท็บ 2 ===== -->
+    <div class="tab-pane fade" id="tab2">
+      <div class="card-lux">
+        <h5 class="fw-bold mb-3" style="color:var(--accent)">ค้นหาอาการเพื่อรับคำแนะนำ</h5>
+        <div class="d-flex flex-column flex-md-row gap-2 mb-4">
+          <input type="text" id="hSearch" class="form-control form-control-lg" placeholder="ระบุอาการ เช่น คลื่นไส้, ท้องผูก...">
+          <button id="btnSearch" class="btn btn-lux px-5 fw-bold" onclick="searchH()">ค้นหาข้อมูล</button>
+        </div>
+        <div id="hResultArea"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="previewOverlayBg" onclick="closePreview()"></div>
+<div id="printArea">
+  <div class="pa-head">
+    <div id="prLogo"></div>
+    <div class="pa-id"><h2 id="prClinic"></h2><small id="prSub1"></small><small id="prSub2"></small></div>
+    <div class="pa-title"><b>ผลการวิเคราะห์ธาตุเจ้าเรือน</b><span id="prWho"></span></div>
+  </div>
+  <div class="pa-main">
+    <div class="pa-left"><div id="prWheel"></div><div class="pa-info" id="prInfo"></div></div>
+    <div class="pa-right" id="prCards"></div>
+  </div>
+  <div class="pa-foot" id="prOil" style="display:none"></div>
+  <div class="pa-date">พิมพ์เมื่อ: <span id="prDate"></span></div>
+</div>
+<div id="prCtl">
+  <div id="prToast"></div>
+  <button style="background:#e2e8f0;color:#334155" onclick="closePreview()">ปิดตัวอย่าง</button>
+  <button id="btnCopyImg" style="background:#b08d3c;color:#1d1708" onclick="copyImage()">คัดลอกเป็นรูปภาพ</button>
+  <button id="btnSaveImg" style="background:#e9e4d3;color:#1d2a26" onclick="saveImage()">บันทึกรูป PNG</button>
+  <button style="background:#1f4d3f;color:#fff" onclick="window.print()">พิมพ์ (A4 แนวนอน)</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  var CN_URL = "<?= cn ?>";
+  var B = null, READ = null, midRot = 0, smallRot = 0, runId = 0;
+  var MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  var MLEN = [31,28,31,30,31,30,31,31,30,31,30,31];
+  var CUM = [0,31,59,90,120,151,181,212,243,273,304,334];
+  var ROWTXT = { r1:'วงนอก (แถว 1)', r2:'วงที่ 2 (แถว 2)', r3:'วงที่ 3 (แถว 3)', s:'วงกลาง · ฤดูสมุฏฐาน' };
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function P(r, a){ var t = a * Math.PI / 180; return [+(r * Math.sin(t)).toFixed(3), +(-r * Math.cos(t)).toFixed(3)]; }
+  function sector(r1, r2, a1, a2){
+    var p1 = P(r2, a1), p2 = P(r2, a2), p3 = P(r1, a2), p4 = P(r1, a1), lg = (a2 - a1) > 180 ? 1 : 0;
+    if (r1 <= 0) return 'M0,0 L' + p1 + ' A' + r2 + ' ' + r2 + ' 0 ' + lg + ' 1 ' + p2 + ' Z';
+    return 'M' + p1 + ' A' + r2 + ' ' + r2 + ' 0 ' + lg + ' 1 ' + p2 + ' L' + p3 + ' A' + r1 + ' ' + r1 + ' 0 ' + lg + ' 0 ' + p4 + ' Z';
+  }
+  function hex(c){ return B.palette[c].hex; }
+  function dateDeg(m, d){ var pos = CUM[m-1] + d; if (m === 2 && d >= 29) pos = 59.5; return (pos - 1) / 365 * 360; }
+
+  /* ---------- วาดแผ่น ---------- */
+  function buildBig(){
+    var s = '<circle r="132" fill="#fbfbf8" stroke="#9aa3a0" stroke-width=".8"/><circle r="100.6" fill="none" stroke="#c9cfcc" stroke-width=".4"/>';
+    var tk = '';
+    for (var m = 0; m < 12; m++){
+      for (var d = 1; d <= MLEN[m]; d++){
+        var a = (CUM[m] + d - 1) / 365 * 360, wk = ((d - 1) % 7 === 0), p1 = P(101.5, a), p2 = P(wk ? 106 : 103.8, a);
+        tk += '<line x1="' + p1[0] + '" y1="' + p1[1] + '" x2="' + p2[0] + '" y2="' + p2[1] + '" stroke="#333" stroke-width="' + (wk ? .45 : .22) + '"/>';
+        if (wk) tk += '<text transform="rotate(' + a.toFixed(2) + ') translate(0,-111)" text-anchor="middle" font-size="3.6" fill="#222">' + d + '</text>';
+      }
+      var mid = (CUM[m] + MLEN[m] / 2) / 365 * 360;
+      tk += '<text transform="rotate(' + mid.toFixed(2) + ') translate(0,-121)" text-anchor="middle" font-size="6.2" font-weight="700" fill="#1d2a26">' + MONTHS[m] + '</text>';
+    }
+    $('svgBig').innerHTML = s + tk + '<g id="mkTable" style="display:none"></g><g id="mkBirth" style="display:none"></g>';
+  }
+  function mkLine(id, deg, color, label){
+    var g = $(id), p1 = P(97, deg), p2 = P(108, deg), p3 = P(113.5, deg);
+    g.innerHTML = '<line x1="' + p1[0] + '" y1="' + p1[1] + '" x2="' + p2[0] + '" y2="' + p2[1] + '" stroke="' + color + '" stroke-width="1.6"/>'
+      + '<circle cx="' + p2[0] + '" cy="' + p2[1] + '" r="2.2" fill="' + color + '"/>'
+      + '<text transform="rotate(' + deg.toFixed(2) + ') translate(0,-130.5)" text-anchor="middle" font-size="5" font-weight="700" fill="' + color + '">' + label + '</text>';
+    g.style.display = '';
+  }
+  function buildMid(){
+    var G = B.geom, s = '<circle r="100" fill="#fff" stroke="#aab2af" stroke-width=".6"/>';
+    function ring(list, r1, r2, withNo){
+      list.forEach(function(c){
+        s += '<path d="' + sector(r1, r2, c[0], c[1]) + '" fill="' + hex(c[2]) + '" stroke="#111" stroke-width=".45"/>';
+        if (withNo){ var mid = (c[0] + c[1]) / 2, rm = (r1 + r2) / 2;
+          s += '<text transform="rotate(' + mid.toFixed(1) + ') translate(0,-' + rm.toFixed(1) + ')" text-anchor="middle" dominant-baseline="central" font-size="5.2" font-weight="700" fill="#111">' + c[3] + '</text>'; }
+      });
+    }
+    ring(G.ring1, G.ringR.ring1[0], G.ringR.ring1[1]);
+    ring(G.ring2, G.ringR.ring2[0], G.ringR.ring2[1]);
+    ring(G.ring3, G.ringR.ring3[0], G.ringR.ring3[1], true);
+    ring(G.center, 0, G.ringR.center[1]);
+    s += '<circle r="1.6" fill="#fff" stroke="#555" stroke-width=".4"/>';
+    s += '<line x1="0" y1="-80" x2="0" y2="-97" stroke="#111" stroke-width="1.2"/><polygon points="0,-104 -3.6,-96.5 3.6,-96.5" fill="#111"/>';
+    $('svgMid').innerHTML = s + '<g id="hiMid"></g>';
+  }
+  function winHalf(r){
+    var w = B.geom.win, h = w.halfDeg * Math.PI / 180, a = w.apexR;
+    if (r <= a) return 0;
+    var t = -a * Math.cos(h) + Math.sqrt(a*a*Math.cos(h)*Math.cos(h) - a*a + r*r);
+    return Math.atan2(t * Math.sin(h), a + t * Math.cos(h)) * 180 / Math.PI;
+  }
+  function buildSmall(){
+    var G = B.geom, w = G.win, h = w.halfDeg * Math.PI / 180, cr = winHalf(w.outerR);
+    var ap = [0, -w.apexR], c1 = P(w.outerR, -cr), c2 = P(w.outerR, cr);
+    var s = '<path fill-rule="evenodd" fill="#fdfdfb" stroke="#222" stroke-width=".8" d="M0,' + (-G.smallR) + ' A' + G.smallR + ' ' + G.smallR + ' 0 1 1 0,' + G.smallR + ' A' + G.smallR + ' ' + G.smallR + ' 0 1 1 0,' + (-G.smallR) + ' Z'
+          + ' M' + ap + ' L' + c1 + ' A' + w.outerR + ' ' + w.outerR + ' 0 0 1 ' + c2 + ' Z"/>';
+    s += '<circle r="91.5" fill="none" stroke="#222" stroke-width=".5"/><circle r="93.2" fill="none" stroke="#222" stroke-width=".5"/>';
+    s += '<path id="arcTxt" d="M' + P(88, 8) + ' A88 88 0 0 1 ' + P(88, 62) + '" fill="none"/><text font-size="6" font-weight="700" fill="#111"><textPath href="#arcTxt">ธาตุเจ้าเรือน</textPath></text>';
+    // ตัวเลขแถว 1-3 ข้างช่อง
+    [['1', G.rows.r1], ['2', G.rows.r2], ['3', G.rows.r3]].forEach(function(x){
+      var r = x[1], hh = winHalf(r), p = P(r, hh + 5.5);
+      s += '<text x="' + p[0] + '" y="' + p[1] + '" font-size="7" font-weight="700" fill="#111" text-anchor="middle" dominant-baseline="central">' + x[0] + '</text>';
+    });
+    s += '<text x="26" y="-52" font-size="4.8" fill="#111">ฤดูสมุฏฐาน</text>';
+    s += '<g font-size="5.3" fill="#111"><text x="27" y="-25">ไฟ</text><text x="42.5" y="-25">ร้อน</text><text x="27" y="-15.5">ลม</text><text x="42.5" y="-15.5">ฝน</text>'
+       + '<text x="27" y="11.5">น้ำ</text><text x="44" y="11.5">หนาว</text><text x="27" y="39">ดิน</text></g>';
+    var leg = ['pink','orange','red','yellow','lgreen','green','lblue','indigo','purple','black'], names = ['พัทธปิตตะ','อพัทธปิตตะ','กำเดา','หทัยวาตะ','สัตถกวาตะ','สุมนาวาตะ','คอเสมหะ','อุระเสมหะ','คูถเสมหะ',''];
+    leg.forEach(function(c, i){
+      var y = -42 + i * 9.05;
+      s += '<rect x="-60" y="' + (y - 3.6) + '" width="7" height="7" fill="' + hex(c) + '" stroke="#333" stroke-width=".3"/><text x="-50" y="' + (y + 1.8) + '" font-size="5.4" fill="#111">' + names[i] + '</text>';
+    });
+    s += '<circle r="1.8" fill="#fff" stroke="#555" stroke-width=".4"/>';
+    function arrow(deg){ return '<g transform="rotate(' + deg + ')"><rect x="-1.6" y="-100" width="3.2" height="6" fill="#3a3a3a"/><polygon points="0,-112 -7.5,-97 7.5,-97" fill="#3a3a3a"/></g>'; }
+    s += arrow(0) + arrow(270);
+    s += '<text x="0" y="-86" font-size="3.2" text-anchor="middle" fill="#fff" style="display:none"></text>';
+    $('svgSmall').innerHTML = s;
+  }
+  function applyRot(){
+    $('svgMid').style.transform = 'rotate(' + midRot + 'deg)';
+    $('svgSmall').style.transform = 'rotate(' + smallRot + 'deg)';
+  }
+  function setTilt(v){ $('stack').style.setProperty('--tilt', v + 'deg'); }
+  function resetWheel(){ runId++; midRot = 0; smallRot = 0; applyRot(); $('mkTable').style.display = 'none'; $('mkBirth').style.display = 'none'; $('hiMid').innerHTML = ''; markSteps(-1); }
+
+  /* ---------- แอนิเมชัน ---------- */
+  function ease(t){ return t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2; }
+  function tween(from, to, ms, setter, id){
+    return new Promise(function(res){
+      var d = ((to - from + 540) % 360) - 180, t0 = performance.now();
+      (function f(now){
+        if (id !== runId) return res(false);
+        var t = Math.min(1, (now - t0) / ms); setter(from + d * ease(t));
+        if (t < 1) requestAnimationFrame(f); else res(true);
+      })(t0);
+    });
+  }
+  function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  function cap(h){ $('cap').innerHTML = h; }
+  function markSteps(n){
+    var el = $('steps').children;
+    for (var i = 0; i < el.length; i++) el[i].className = (i === n) ? 'on' : (i < n ? 'done' : '');
+  }
+  function highlightWindow(){
+    var G = B.geom, w = G.win, ax = READ.angles.axis, cr = winHalf(w.outerR), g = '';
+    var a1 = ax - cr, a2 = ax + cr, ap = P(w.apexR, ax);
+    g = '<path d="M' + ap + ' L' + P(w.outerR, a1) + ' A' + w.outerR + ' ' + w.outerR + ' 0 0 1 ' + P(w.outerR, a2) + ' Z" fill="none" stroke="#00c853" stroke-width="1.4"/>';
+    $('hiMid').innerHTML = g;
+  }
+  async function play(skip){
+    var id = ++runId, A = READ.angles, b = READ.birth, t = READ.table;
+    midRot = 0; smallRot = 0; applyRot();
+    $('mkTable').style.display = 'none'; $('mkBirth').style.display = 'none'; $('hiMid').innerHTML = '';
+    if (skip){
+      midRot = A.midRot; smallRot = A.smallRot; applyRot();
+      mkLine('mkTable', A.table, '#c28a00', t.d + ' ' + MONTHS[t.m-1].substring(0,3)); mkLine('mkBirth', A.birth, '#d23b3b', b.d + ' ' + MONTHS[b.m-1].substring(0,3));
+      highlightWindow(); markSteps(4); cap('อ่านช่องสามเหลี่ยมที่ลูกศรบนของแผ่นเล็กได้ตามผลด้านข้าง'); return;
+    }
+    markSteps(0);
+    cap('<b>ขั้นที่ 1</b> พ.ศ. ' + b.be + ' ในตารางด้านหลังแผ่นใหญ่ ตรงกับวันที่ <b>' + t.d + ' ' + MONTHS[t.m-1] + '</b>');
+    mkLine('mkTable', A.table, '#c28a00', t.d + ' ' + MONTHS[t.m-1].substring(0,3));
+    await sleep(1700); if (id !== runId) return;
+    markSteps(1);
+    cap('<b>ขั้นที่ 2</b> หมุนแผ่นกลางให้ลูกศรชี้ <b>' + t.d + ' ' + MONTHS[t.m-1] + '</b> บนสเกลวันที่ของแผ่นใหญ่ แล้วล็อกไว้');
+    if (!await tween(0, A.midRot, 2200, function(v){ midRot = v; applyRot(); }, id)) return;
+    midRot = A.midRot; applyRot(); await sleep(600); if (id !== runId) return;
+    markSteps(2);
+    cap('<b>ขั้นที่ 3</b> หมุนแผ่นเล็กให้ลูกศรซ้ายชี้วันเกิด <b>' + b.d + ' ' + MONTHS[b.m-1] + '</b> (ลูกศรบนจะชี้ฝั่งวันปฏิสนธิ)');
+    mkLine('mkBirth', A.birth, '#d23b3b', b.d + ' ' + MONTHS[b.m-1].substring(0,3));
+    if (!await tween(0, A.smallRot, 2400, function(v){ smallRot = v; applyRot(); }, id)) return;
+    smallRot = A.smallRot; applyRot(); await sleep(500); if (id !== runId) return;
+    markSteps(3); highlightWindow();
+    cap('<b>ขั้นที่ 4</b> ช่องสามเหลี่ยมเปิดให้เห็นสีของแผ่นกลางที่อยู่ข้างใต้ — อ่านผลได้ที่ด้านขวา');
+    markSteps(4);
+  }
+
+  /* ---------- วิเคราะห์ / แสดงผล ---------- */
+  function analyze(skip){
+    var d = $('bDate').value; $('msg').innerText = '';
+    if (!d){ $('msg').innerText = 'กรุณาระบุวันเกิด'; return; }
+    if (!B){ $('msg').innerText = 'กำลังโหลดข้อมูลแผ่น กรุณารอสักครู่แล้วลองใหม่'; return; }
+    $('btn1').disabled = true;
+    google.script.run
+      .withSuccessHandler(function(r){
+        $('btn1').disabled = false;
+        if (!r || !r.ok){ $('msg').innerText = (r && r.message) || 'วิเคราะห์ไม่สำเร็จ'; return; }
+        READ = r; READ.legacy = null; renderResult(); play(skip);
+        // น้ำมันหอมระเหยตามวันเกิดจากตารางเดิม (ชีต1) — ดึงมาเสริม เพราะค่าในแผ่นธาตุขึ้นกับที่แอดมินกรอกต่อสี
+        google.script.run
+          .withSuccessHandler(function(l){ if (READ === r){ READ.legacy = l || null; renderResult(); } })
+          .withFailureHandler(function(){})
+          .getElementInfo(d);
+      })
+      .withFailureHandler(function(e){ $('btn1').disabled = false; $('msg').innerText = 'เกิดข้อผิดพลาด: ' + (e.message || e); })
+      .getWheelReading(d);
+  }
+  var FLD = [['appearance','ลักษณะทั่วไป'],['caution','โรคที่ควรระวัง'],['mind','ลักษณะจิตใจเมื่อกำเริบ'],['commonIllness','โรคที่พบบ่อย'],['food','การกินอาหาร'],['lifestyle','การปรับวิถีชีวิต'],['oil','น้ำมันหอมระเหย']];
+  function cfgOf(k){ return (B.config && B.config[k]) || {}; }
+  /* น้ำมันหอมระเหย: รวมจากค่าที่แอดมินตั้งไว้ตามสีของแผ่นธาตุ + ค่าตามวันเกิดจากตารางเดิม (ชีต1) */
+  function oilInfo(){
+    var cfg = [], leg = '';
+    if (!READ) return { cfg: cfg, legacy: leg };
+    READ.rows.forEach(function(x){ var o = String(cfgOf(x.cfgKey).oil || '').trim(); if (o && cfg.indexOf(o) === -1) cfg.push(o); });
+    if (READ.legacy && String(READ.legacy.oil || '').trim()){ leg = String(READ.legacy.oil).trim(); if (cfg.indexOf(leg) > -1) leg = ''; }
+    return { cfg: cfg, legacy: leg };
+  }
+   /* น้ำมันหอมระเหย: เลือกแสดงเฉพาะค่าจากผลแผ่นธาตุ ถ้าไม่มีค่อยดึงตามวันเกิด */
+  function oilHtml(){
+    var o = oilInfo();
+    if (o.cfg.length) {
+      return o.cfg.map(esc).join(' / '); // แสดงเฉพาะจากแผ่นธาตุ
+    }
+    if (o.legacy) {
+      return esc(o.legacy); // ถ้าไม่มี ค่อยแสดงตามวันเกิด
+    }
+    return '';
+  }
+  function rowTitle(x){ return ROWTXT[x.key] + (x.no ? ' · ช่อง ' + x.no : ''); }
+  function renderResult(){
+    var r = READ, b = r.birth, t = r.table, html = '';
+    $('tblInfo').innerHTML = 'วันเกิด <b>' + b.d + ' ' + MONTHS[b.m-1] + ' พ.ศ. ' + b.be + '</b> → ตารางแผ่นใหญ่ พ.ศ. ' + b.be + ' = <b>' + t.d + ' ' + MONTHS[t.m-1] + '</b>';
+    r.rows.forEach(function(x){
+      var c = cfgOf(x.cfgKey), others = x.covered.filter(function(v){ return v.color !== x.color || (x.no && v.no !== x.no); });
+      html += '<div class="rd-card"><div class="rd-h"><span class="chip" style="background:' + hex(x.color) + '"></span><span class="rd-t">' + esc(rowTitle(x)) + (r.primary === x.key ? ' · ธาตุเจ้าเรือนหลัก' : '') + '</span></div>'
+        + '<div class="rd-name">' + esc(x.name) + '</div>';
+      if (x.near) html += '<div class="rd-note">ใกล้ขอบสี — ควรเทียบกับแผ่นจริงอีกครั้ง</div>';
+      if (others.length) html += '<div class="rd-cov">สีอื่นที่เห็นในช่อง: ' + others.map(function(o){ return esc(o.name) + (o.no ? ' (ช่อง ' + o.no + ')' : '') + ' ' + o.share + '%'; }).join(', ') + '</div>';
+      FLD.forEach(function(f){ if (c[f[0]]) html += '<div class="rd-f"><b>' + f[1] + ':</b> ' + esc(c[f[0]]) + '</div>'; });
+      html += '</div>';
+    });
+    $('rows').innerHTML = html;
+    var oh = oilHtml();
+    $('oilBox').style.display = oh ? '' : 'none'; $('oilTxt').innerHTML = oh;
+    $('resCard').style.display = ''; $('hintCard').style.display = 'none';
+  }
+
+  /* ---------- พิมพ์ A5 ---------- */
+  /* ภาพแผ่นสำหรับพิมพ์: รวม 3 แผ่นเป็น SVG เดียว มองตรงด้านบน หมุนตามผลที่คำนวณได้ */
+  function wheelPrintSVG(){
+    var A = READ.angles;
+    var big = $('svgBig').innerHTML;
+    var mid = $('svgMid').innerHTML.replace(/<g id="hiMid">[\s\S]*?<\/g>/, '');
+    var sm = $('svgSmall').innerHTML.replace(/arcTxt/g, 'arcTxtP');
+    return '<svg viewBox="-136 -136 272 272" xmlns="http://www.w3.org/2000/svg">' + big
+      + '<g transform="rotate(' + A.midRot + ')">' + mid + '</g>'
+      + '<g transform="rotate(' + A.smallRot + ')">' + sm + '</g></svg>';
+  }
+  var PT = null, LOGO_DATA = { key: '', uri: '' };
+  /* ข้อมูลคลินิก/โลโก้จากหน้าแอดมิน (ตั้งค่าที่แท็บ "ข้อมูลคลินิก") */
+  function getBrandFresh(){
+    return new Promise(function(res){
+      var done = false, t = setTimeout(function(){ if (!done){ done = true; res(window.AW_BRAND || {}); } }, 4000);
+      google.script.run
+        .withSuccessHandler(function(b){ if (done) return; done = true; clearTimeout(t); if (b){ window.AW_BRAND = b; try { awLS('aw_brand', JSON.stringify(b)); } catch(e){} } res(b || window.AW_BRAND || {}); })
+        .withFailureHandler(function(){ if (done) return; done = true; clearTimeout(t); res(window.AW_BRAND || {}); })
+        .getBranding();
+    });
+  }
+  function getLogoData(br){
+    var key = String(br.logo || '') + '|' + String(br.logoUrl || '');
+    if (LOGO_DATA.key === key) return Promise.resolve(LOGO_DATA.uri);
+    return new Promise(function(res){
+      var done = false, t = setTimeout(function(){ if (!done){ done = true; res(br.logoUrl || ''); } }, 5000);
+      function fin(u){ if (done) return; done = true; clearTimeout(t); LOGO_DATA = { key: key, uri: u || br.logoUrl || '' }; res(LOGO_DATA.uri); }
+      google.script.run.withSuccessHandler(fin).withFailureHandler(function(){ fin(''); }).getBrandLogoData();
+    });
+  }
+  async function previewPrint(){
+    if (!READ){ alert('กรุณาวิเคราะห์ธาตุเจ้าเรือนก่อนพิมพ์'); return; }
+    var br = await getBrandFresh();
+    var logo = (br.noLogo || !br.logoUrl) ? '' : await getLogoData(br);
+    var r = READ, b = r.birth, t = r.table, cards = '';
+    $('prClinic').innerText = br.clinicFull || br.name || 'คลินิก';
+    $('prSub1').innerText = [br.clinicType, br.address].filter(Boolean).join(' · ');
+    $('prSub2').innerText = [br.phone ? 'โทร ' + br.phone : '', br.email, br.licenseNo ? 'ใบอนุญาตสถานพยาบาลเลขที่ ' + br.licenseNo : ''].filter(Boolean).join(' · ');
+    $('prLogo').innerHTML = logo ? '<img src="' + esc(logo) + '" alt="" onerror="this.outerHTML=\'<div class=pa-crest>' + esc(br.crest || 'อ') + '</div>\'">'
+                                 : '<div class="pa-crest">' + esc(br.crest || 'อ') + '</div>';
+    $('prWho').innerText = PT ? 'ผู้ป่วย: ' + PT.name + ' (CN ' + PT.cn + ')' : '';
+    $('prWheel').innerHTML = wheelPrintSVG();
+    $('prInfo').innerHTML = '<b>วันเกิด:</b> ' + b.d + ' ' + MONTHS[b.m-1] + ' พ.ศ. ' + b.be + '<br><b>ตารางแผ่นใหญ่ พ.ศ. ' + b.be + ':</b> ' + t.d + ' ' + MONTHS[t.m-1];
+    r.rows.forEach(function(x){
+      var c = cfgOf(x.cfgKey);
+      cards += '<div class="pa-card" style="--c:' + hex(x.color) + '"><h4><span class="pa-chip" style="background:' + hex(x.color) + '"></span>' + esc(rowTitle(x)) + ' : <i>' + esc(x.name) + '</i>'
+        + (x.near ? ' <span class="pa-near">(ใกล้ขอบสี)</span>' : '') + '</h4>';
+      FLD.forEach(function(f){ if (c[f[0]] && f[0] !== 'oil') cards += '<p><b>' + f[1] + ':</b> ' + esc(c[f[0]]) + '</p>'; });
+      cards += '</div>';
+    });
+    $('prCards').innerHTML = cards;
+    var oh = oilHtml();
+    $('prOil').style.display = oh ? '' : 'none';
+    $('prOil').innerHTML = '<b>น้ำมันหอมระเหยที่แนะนำ:</b> ' + oh;
+    $('prDate').innerText = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+    $('previewOverlayBg').style.display = 'block'; $('printArea').classList.add('preview-active'); $('prCtl').classList.add('on');
+    document.body.style.overflow = 'hidden';
+    setPreviewScale(); fitPrint();
+  }
+
+  /* ---------- คัดลอก / บันทึกใบผลเป็นรูปภาพ (ส่งต่อทางแชต/อีเมลได้ง่าย) ---------- */
+  var H2C_URL = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', toastT = null;
+  function prToast(msg, bad){
+    var t = $('prToast'); t.textContent = msg; t.className = 'show' + (bad ? ' bad' : '');
+    clearTimeout(toastT); toastT = setTimeout(function(){ t.className = ''; }, 6000);
+  }
+  function loadScript(src){
+    return new Promise(function(res, rej){
+      var s = document.createElement('script'); s.src = src; s.onload = res;
+      s.onerror = function(){ rej(new Error('โหลดตัวสร้างรูปภาพไม่สำเร็จ — ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่')); };
+      document.head.appendChild(s);
+    });
+  }
+  async function sheetCanvas(){
+    if (typeof html2canvas === 'undefined') await loadScript(H2C_URL);
+    return html2canvas($('printArea'), {
+      scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false, windowWidth: 1500, windowHeight: 950,
+      onclone: function(doc){            // ถ่ายที่ขนาดจริงของกระดาษ ไม่ติดสเกลของหน้าตัวอย่าง
+        var c = doc.getElementById('printArea');
+        c.style.transform = 'none'; c.style.left = '0'; c.style.top = '0'; c.style.position = 'absolute'; c.style.boxShadow = 'none';
+      }
+    });
+  }
+  function canvasBlob(c){
+    return new Promise(function(res, rej){ c.toBlob(function(b){ b ? res(b) : rej(new Error('สร้างรูปภาพไม่สำเร็จ')); }, 'image/png'); });
+  }
+  function imgName(){ return 'element_' + (PT ? PT.cn + '_' : '') + new Date().toISOString().slice(0, 10) + '.png'; }
+  function showImageOverlay(blob, msg){
+    var old = $('imgOv'); if (old) old.remove();
+    var url = URL.createObjectURL(blob), d = document.createElement('div'); d.id = 'imgOv';
+    d.innerHTML = '<div class="t">' + esc(msg) + '</div><img src="' + url + '" alt="ใบผลธาตุเจ้าเรือน">'
+      + '<button class="btn btn-light" onclick="document.getElementById(\'imgOv\').remove()">ปิด</button>';
+    document.body.appendChild(d);
+  }
+  async function copyImage(){
+    var b1 = $('btnCopyImg'); b1.disabled = true; prToast('กำลังสร้างรูปภาพ...');
+    try {
+      var blobP = sheetCanvas().then(canvasBlob);
+      if (navigator.clipboard && window.ClipboardItem){
+        try {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobP })]);
+          prToast('คัดลอกรูปแล้ว — วางในแชต/อีเมลได้เลย (Ctrl+V)');
+          return;
+        } catch (e) { /* เบราว์เซอร์ไม่อนุญาตให้คัดลอกจากหน้านี้ → ใช้วิธีสำรองด้านล่าง */ }
+      }
+      var blob = await blobP;
+      showImageOverlay(blob, 'คัดลอกอัตโนมัติไม่ได้ในหน้านี้ — คลิกขวา (หรือกดค้างบนมือถือ) ที่รูป แล้วเลือก "คัดลอกรูปภาพ" หรือ "บันทึกรูปภาพ"');
+      prToast('เปิดรูปให้คัดลอกด้วยตนเองแล้ว');
+    } catch (e) { prToast('สร้างรูปไม่สำเร็จ: ' + (e.message || e), true); }
+    finally { b1.disabled = false; }
+  }
+  async function saveImage(){
+    var b2 = $('btnSaveImg'); b2.disabled = true; prToast('กำลังสร้างรูปภาพ...');
+    try {
+      var blob = await canvasBlob(await sheetCanvas()), file = null;
+      try { file = new File([blob], imgName(), { type: 'image/png' }); } catch (e) {}
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })){
+        try { await navigator.share({ files: [file], title: 'ผลวิเคราะห์ธาตุเจ้าเรือน' }); prToast('ส่งต่อแล้ว'); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+      }
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = imgName();
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+      prToast('บันทึกเป็นไฟล์ PNG แล้ว (ถ้าไม่มีไฟล์ขึ้น ให้ใช้ปุ่ม "คัดลอกเป็นรูปภาพ")');
+    } catch (e) { prToast('สร้างรูปไม่สำเร็จ: ' + (e.message || e), true); }
+    finally { b2.disabled = false; }
+  }
+  function setPreviewScale(){
+    var s = Math.min((window.innerWidth - 24) / 1123, (window.innerHeight - 96) / 794, 1);
+    $('printArea').style.setProperty('--ps', s);
+  }
+  /* ย่อขนาดตัวอักษรอัตโนมัติจนข้อมูลทั้งหมดพอดีหน้า A4 แนวนอนหน้าเดียว */
+  function fitPrint(){
+    var pa = $('printArea'), R = $('prCards'), L = pa.querySelector('.pa-left'), sz = 10.5;
+    pa.style.fontSize = sz + 'pt';
+    function over(){ return R.scrollWidth > R.clientWidth + 2 || R.scrollHeight > R.clientHeight + 2 || L.scrollHeight > L.clientHeight + 2; }
+    while (sz > 5.5 && over()){ sz -= 0.25; pa.style.fontSize = sz + 'pt'; }
+  }
+  function closePreview(){
+    $('previewOverlayBg').style.display = 'none'; $('printArea').classList.remove('preview-active'); $('prCtl').classList.remove('on');
+    document.body.style.overflow = '';
+  }
+  window.addEventListener('resize', function(){ if ($('printArea').classList.contains('preview-active')) setPreviewScale(); });
+  window.addEventListener('afterprint', closePreview);
+
+  /* ---------- แอดมิน: ตั้งค่าความหมายแต่ละสี ---------- */
+  function buildAdmin(){
+    var html = '', last = '';
+    B.entries.forEach(function(e){
+      var key = e[0] + '_' + e[1];
+      if (e[0] !== last){ html += '<div class="adm-grp">' + ROWTXT[e[0]] + '</div>'; last = e[0]; }
+      var c = cfgOf(key);
+      html += '<details class="adm-e"><summary><span class="chip" style="background:' + hex(e[1]) + '"></span>' + esc(B.palette[e[1]].name) + ' → <span class="text-muted">' + esc(c.name || '') + '</span></summary><div class="grid">';
+      B.fields.forEach(function(f, i){
+        html += '<div><label>' + esc(B.fieldHeaders[i]) + '</label>' + (f === 'name'
+          ? '<input class="form-control form-control-sm" data-k="' + key + '" data-f="' + f + '" value="' + esc(c[f] || '') + '">'
+          : '<textarea class="form-control form-control-sm" rows="2" data-k="' + key + '" data-f="' + f + '">' + esc(c[f] || '') + '</textarea>') + '</div>';
+      });
+      html += '</div></details>';
+    });
+    $('admList').innerHTML = html; $('primarySel').value = B.primary || 'r1';
+  }
+  function saveAdmin(){
+    var ent = {};
+    [].forEach.call(document.querySelectorAll('#admList [data-k]'), function(el){
+      var k = el.getAttribute('data-k'); (ent[k] = ent[k] || {})[el.getAttribute('data-f')] = el.value;
+    });
+    $('admSave').disabled = true; $('admMsg').innerText = 'กำลังบันทึก...';
+    google.script.run
+      .withSuccessHandler(function(m){
+        $('admSave').disabled = false; $('admMsg').innerText = m;
+        google.script.run.withSuccessHandler(function(nb){ B = nb; if (READ) { READ.primary = B.primary; renderResult(); } }).getWheelBundle();
+      })
+      .withFailureHandler(function(e){ $('admSave').disabled = false; $('admMsg').innerText = 'บันทึกไม่สำเร็จ: ' + (e.message || e); })
+      .adminSaveWheelConfig(awToken(), { primary: $('primarySel').value, entries: ent });
+  }
+
+  /* ---------- สมุนไพร (แท็บ 2) ---------- */
+  function searchH(){
+    var kw = $('hSearch').value.trim();
+    if (!kw) return;
+    $('hResultArea').innerHTML = '<div class="text-center py-4 text-muted">กำลังค้นหา...</div>';
+    google.script.run
+      .withSuccessHandler(function(data){
+        if (!data || !data.length){ $('hResultArea').innerHTML = '<div class="alert alert-warning text-center mt-3">ไม่พบข้อมูลอาการที่ระบุ โปรดตรวจสอบคำค้นหาอีกครั้ง</div>'; return; }
+        var html = '';
+        data.forEach(function(item){
+          html += '<div class="herb-item">'
+            + '<div class="mb-3"><span class="label-green">โรค:</span> <span class="fs-5 fw-bold">' + esc(item.disease) + '</span></div>'
+            + '<div class="mb-3"><span class="label-green">อาการ:</span> <span class="badge bg-secondary fs-6 py-2 px-3">' + esc(item.symptom) + '</span></div>'
+            + '<div class="mb-3"><span class="label-green">กลุ่มยาแผนปัจจุบัน:</span> <span>' + esc(item.modernGroup) + '</span></div>'
+            + '<div class="mb-3"><span class="label-green">ผลข้างเคียงของยารักษา:</span> <span class="fw-bold" style="color:var(--bad)">' + esc(item.sideEffect) + '</span></div>'
+            + '<div class="herb-solution-box my-3"><div class="fw-bold mb-2" style="color:var(--ok)">ยาสมุนไพรลดผลข้างเคียง:</div><div style="white-space:pre-line" class="lh-lg">' + esc(item.herbSolution) + '</div></div>'
+            + '<div class="mb-2"><span class="label-green">อันตรกิริยา:</span> <span class="text-muted">' + esc(item.interaction || '-') + '</span></div>'
+            + (/^https?:\/\//i.test(item.testLink || '') ? '<div class="mt-3"><a href="' + esc(item.testLink) + '" target="_blank" rel="noopener" class="btn btn-outline-primary w-100">ทำแบบทดสอบเพิ่มเติม</a></div>' : '')
+            + '</div>';
+        });
+        $('hResultArea').innerHTML = html;
+      })
+      .withFailureHandler(function(err){ $('hResultArea').innerHTML = '<div class="alert alert-danger mt-3">ค้นหาไม่สำเร็จ: ' + esc(err.message) + '</div>'; })
+      .searchHerb(kw);
+  }
+
+  /* ---------- เริ่มต้น ---------- */
+  window.addEventListener('load', function(){
+    google.script.run
+      .withSuccessHandler(function(b){
+        B = b; buildBig(); buildMid(); buildSmall(); applyRot();
+        if (awIsAdmin()){ $('admBox').style.display = ''; buildAdmin(); }
+        if (CN_URL){
+          google.script.run.withSuccessHandler(function(p){
+            if (p && p.dob){ PT = { cn: p.cn, name: p.name }; $('bDate').value = p.dob; analyze(false); }
+            else $('msg').innerText = 'ไม่พบวันเกิดของผู้ป่วยรายนี้ในทะเบียน';
+          }).searchPatient(CN_URL);
+        }
+      })
+      .withFailureHandler(function(e){ $('msg').innerText = 'โหลดข้อมูลแผ่นไม่สำเร็จ: ' + (e.message || e) + ' (ตรวจสอบว่าเพิ่มไฟล์ Wheel.gs แล้ว)'; })
+      .getWheelBundle();
+  });
+</script>
+</body>
+</html>
