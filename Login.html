@@ -47,7 +47,8 @@
       awLS('aw_loginerr', null);
       awLS('aw_pending', JSON.stringify({ u: u, p: p }));
       $('btn').disabled = true; $('btn').innerText = 'กำลังเข้าสู่ระบบ...'; $('err').innerText = '';
-      awGo('Register');
+      window.parent.postMessage({ awGo: "https://script.google.com/macros/s/AKfycbzp8REJ3VLyaYajrZy9LNRSc7RZkkdMQDBWyRC7hf2UJz1EO979VmtIM470H8NiY5_L_A/exec?p=Register" }, "*");
+
     }
 
     document.addEventListener('keypress', function(e){ if (e.key === 'Enter') login(); });
