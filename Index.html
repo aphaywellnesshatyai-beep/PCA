@@ -1,32 +1,121 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>อภัย เวลเนสคลินิกการแพทย์แผนไทย</title>
-    <style>
-        html, body { margin: 0; height: 100%; background: #f4f2ed; }
-        iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f4d3f">
+<title>APC เวชระเบียน</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;background:#f4f2ed;overflow:hidden}
+  /* กรอบเต็มจอ: เว้นพื้นที่รอยบาก/แถบล่างของมือถือเอง (ภายใน iframe อ่านค่า safe-area ไม่ได้) */
+  #box{position:fixed;top:0;left:0;width:100%;height:100vh;height:100dvh;
+       padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  #app{width:100%;height:100%;border:0;display:block;background:#f4f2ed;opacity:0;transition:opacity .45s}
+  #app.on{opacity:1}
+  #loader{position:fixed;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+          background:#f4f2ed;color:#1f4d3f;font-family:'Sarabun',system-ui,sans-serif;text-align:center;padding:20px;transition:opacity .5s}
+  #loader.out{opacity:0;pointer-events:none}
+  .ring{width:46px;height:46px;border-radius:50%;border:4px solid rgba(31,77,63,.18);border-top-color:#b08d3c;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  #slow{display:none;font-size:.9rem;color:#66726c;max-width:320px;line-height:1.6}
+  #retry{display:none;border:0;border-radius:8px;background:#1f4d3f;color:#fff;padding:10px 22px;font:700 .95rem 'Sarabun',sans-serif;cursor:pointer}
+</style>
 </head>
 <body>
-    <iframe id="app" allow="camera; microphone; fullscreen; clipboard-write" title="ระบบเวชระเบียน"></iframe>
-    <script>
-        // ใช้ลิงก์ Apps Script ล่าสุดของคุณ
-        var BASE = "https://script.google.com/macros/s/AKfycbzp8REJ3VLyaYajrZy9LNRSc7RZkkdMQDBWyRC7hf2UJz1EO979VmtIM470H8NiY5_L_A/exec";
-        var frame = document.getElementById('app');
+<div id="loader">
+  <div class="ring"></div>
+  <div style="font-weight:700">กำลังโหลด APC เวชระเบียน...</div>
+  <div id="slow">ใช้เวลานานกว่าปกติ — ตรวจสอบอินเทอร์เน็ต หรือกด "ลองใหม่"</div>
+  <button id="retry" type="button">ลองใหม่</button>
+</div>
+<div id="box">
+  <!-- ห้ามใส่ sandbox เพราะจะทำให้ Google Apps Script ทำงานไม่ครบ · allow = เปิดสิทธิ์เต็มจอ/กล้อง (ใช้ตรวจสรีระ) -->
+  <iframe id="app" title="APC เวชระเบียน"
+          allow="fullscreen *; camera *; microphone *; clipboard-write *; autoplay *"
+          allowfullscreen referrerpolicy="no-referrer"></iframe>
+</div>
+<noscript>กรุณาเปิดใช้งาน JavaScript</noscript>
 
-        function withShell(url) { return url + (url.indexOf('?') > -1 ? '&' : '?') + 'shell=1'; }
+<script>
+(function(){
+  /* ▼▼ วางลิงก์ Web App (ที่ลงท้ายด้วย /exec) ตรงนี้ ▼▼ */
+  var EXEC = 'https://script.google.com/macros/s/AKfycbzp8REJ3VLyaYajrZy9LNRSc7RZkkdMQDBWyRC7hf2UJz1EO979VmtIM470H8NiY5_L_A/exec';
+  /* true = เก็บ ?p=หน้า ไว้บนแถบที่อยู่ เพื่อให้กด Refresh แล้วกลับมาหน้าเดิม (โดเมนยังเป็นของคุณ) / false = แถบที่อยู่ไม่เปลี่ยนเลย */
+  var KEEP_PAGE_IN_URL = true;
 
-        var extra = location.search ? '&' + location.search.slice(1) : '';
-        frame.src = BASE + '?shell=1' + extra;
+  var frame = document.getElementById('app'), loader = document.getElementById('loader');
+  var slow = document.getElementById('slow'), retry = document.getElementById('retry');
+  var timer = null, current = '';
 
-        window.addEventListener('message', function (e) {
-            var d = e.data || {};
-            if (typeof d.string === 'string' && /^https:\/\/script\.google\.com\/(a\/[^\/]+\/)?macros\//.test(d.awGo)) {
-                frame.src = withShell(d.awGo);
-            }
-        });
-    </script>
+  function hideLoader(){
+    clearTimeout(timer); loader.classList.add('out'); frame.classList.add('on');
+  }
+  function load(url){
+    current = url;
+    loader.classList.remove('out'); frame.classList.remove('on'); slow.style.display = 'none'; retry.style.display = 'none';
+    frame.src = url;
+    clearTimeout(timer);
+    timer = setTimeout(function(){ slow.style.display = 'block'; retry.style.display = 'inline-block'; }, 20000);
+  }
+  function isExec(u){ return typeof u === 'string' && u.indexOf(EXEC) === 0; }
+  function okOrigin(o){ return /^https:\/\/([a-z0-9-]+\.)*(script\.google\.com|googleusercontent\.com)$/i.test(o || ''); }
+
+  // iframe โหลดเสร็จ → รอสัญญาณจากแอป (aw-hello) ถ้าไม่มาภายใน 1.5 วินาทีก็เปิดให้เห็นเลย
+  frame.addEventListener('load', function(){
+    if (!frame.getAttribute('src')) return;
+    setTimeout(hideLoader, 1500);
+  });
+  retry.addEventListener('click', function(){ load(current || EXEC); });
+
+  /* พิมพ์เอกสาร: แอปที่อยู่ใน iframe ซ้อนกัน (Google → Netlify) พิมพ์เองมักได้หน้าขาว
+     จึงส่ง HTML มาให้หน้าเว็บหลักนี้ (โดเมนของเรา) พิมพ์ผ่าน iframe ซ่อน แทน */
+  var pf = null;
+  function removePf(){ if (pf && pf.parentNode) pf.parentNode.removeChild(pf); pf = null; }
+  function printHtml(html){
+    html = String(html || '').replace(/<script[\s\S]*?<\/script>/gi, '');     // ตัดสคริปต์พิมพ์เดิมทิ้ง (เราสั่งพิมพ์เอง)
+    removePf();
+    var f = document.createElement('iframe');
+    f.setAttribute('aria-hidden', 'true');
+    f.style.cssText = 'position:fixed;left:-10000px;top:0;width:1100px;height:800px;border:0;opacity:0;pointer-events:none';
+    f.srcdoc = html;                                   // ตั้งก่อนใส่ลงหน้า กันสั่งพิมพ์หน้าเปล่า
+    f.onload = function(){
+      var w = f.contentWindow;
+      var go = function(){
+        try { w.onafterprint = function(){ setTimeout(removePf, 800); }; w.focus(); w.print(); }
+        catch(e){ alert('สั่งพิมพ์ไม่สำเร็จ: ' + e.message); }
+      };
+      if (w.document.fonts && w.document.fonts.ready) w.document.fonts.ready.then(function(){ setTimeout(go, 300); });
+      else setTimeout(go, 700);
+    };
+    pf = f; document.body.appendChild(f);
+    setTimeout(function(){ if (pf === f) removePf(); }, 180000);
+  }
+
+  // รับข้อความจากแอป: aw-hello = ทักทาย (ตอบ aw-wrap), aw-go = ขอเปลี่ยนหน้า, aw-print = ขอพิมพ์
+  window.addEventListener('message', function(ev){
+    var d = ev.data; if (!d || typeof d !== 'object' || !okOrigin(ev.origin)) return;
+    if (d.type === 'aw-hello'){
+      try { ev.source.postMessage({ type: 'aw-wrap' }, '*'); } catch(e){}
+      hideLoader();
+    } else if (d.type === 'aw-print'){
+      printHtml(d.html);
+    } else if (d.type === 'aw-go' && isExec(d.url)){
+      if (KEEP_PAGE_IN_URL){
+        var q = d.url.indexOf('?') > -1 ? d.url.substring(d.url.indexOf('?')) : '';
+        try { history.replaceState(null, '', location.pathname + q); } catch(e){}
+      }
+      load(d.url);
+    }
+  });
+
+  if (EXEC.indexOf('PASTE_YOUR') === 0){
+    loader.innerHTML = '<div style="font-weight:700;color:#b3392f">ยังไม่ได้ใส่ลิงก์ Web App<br>เปิดไฟล์ index.html แล้วแก้ค่า EXEC ให้เป็นลิงก์ที่ลงท้ายด้วย /exec</div>';
+    return;
+  }
+  load(EXEC + (location.search || ''));     // รองรับ https://เว็บของคุณ/?p=Search
+})();
+</script>
 </body>
 </html>
